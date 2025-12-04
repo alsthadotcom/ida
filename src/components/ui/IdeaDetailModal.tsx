@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Star, Zap, Shield, User } from "lucide-react";
+import { Check, Star, Zap, Shield, User, FileText } from "lucide-react";
 
 interface IdeaDetailModalProps {
     idea: any;
@@ -28,10 +28,13 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             <div className="flex items-center gap-2 mb-6">
                                 <div className="flex">
                                     {[...Array(5)].map((_, i) => (
-                                        <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                        <Star
+                                            key={i}
+                                            className={`w-4 h-4 ${i < (idea.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
+                                        />
                                     ))}
                                 </div>
-                                <span className="text-sm text-muted-foreground">(4.9)</span>
+                                <span className="text-sm text-muted-foreground">({idea.rating || 0})</span>
                             </div>
                         </div>
 
@@ -47,7 +50,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 </div>
                                 <div>
                                     <div className="text-sm font-medium">Created by</div>
-                                    <div className="text-sm font-bold">Alex Innovator</div>
+                                    <div className="text-sm font-bold">{idea.seller}</div>
                                 </div>
                             </div>
                         </div>
@@ -83,6 +86,46 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                     ))}
                                 </ul>
                             </div>
+
+                            {/* Evidence Files Section */}
+                            {idea.evidence_files && idea.evidence_files.length > 0 && (
+                                <div>
+                                    <h3 className="font-bold mb-3 flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-primary" />
+                                        Evidence & Documents
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {idea.evidence_files.split(',').map((url: string, i: number) => {
+                                            if (!url.trim()) return null;
+                                            // Extract filename from URL (remove query params and path)
+                                            // Format: .../filename.ext or .../uuid-timestamp-filename.ext
+                                            const rawFileName = url.split('/').pop()?.split('?')[0] || `Document ${i + 1}`;
+                                            // Try to make it more readable by removing the uuid prefix if possible
+                                            // Pattern: uuid-timestamp-filename
+                                            const parts = rawFileName.split('-');
+                                            const displayFileName = parts.length > 2 ? parts.slice(2).join('-') : rawFileName;
+
+                                            return (
+                                                <a
+                                                    key={i}
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 text-sm text-primary hover:underline p-2 bg-muted/50 rounded-lg transition-colors hover:bg-muted"
+                                                >
+                                                    <FileText className="w-4 h-4 shrink-0" />
+                                                    <span className="truncate">{decodeURIComponent(displayFileName)}</span>
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                    {idea.evidence_note && (
+                                        <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-primary/20 pl-2">
+                                            "{idea.evidence_note}"
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div>
                                 <h3 className="font-bold mb-3 flex items-center gap-2">

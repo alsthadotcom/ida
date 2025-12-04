@@ -1,11 +1,15 @@
 import { supabase } from '@/lib/supabase';
 
-// Generate slug from title
+// Generate unique slug from title
 function generateSlug(title: string): string {
-    return title
+    const baseSlug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
+
+    // Add timestamp to ensure uniqueness
+    const timestamp = Date.now();
+    return `${baseSlug}-${timestamp}`;
 }
 
 // Upload evidence files to Supabase Storage
@@ -50,7 +54,7 @@ export async function createIdea(ideaData: any): Promise<string> {
             slug,
             title: ideaData.title,
             description: ideaData.description,
-            price: ideaData.price,
+            price: ideaData.price.toString().startsWith('$') ? ideaData.price : `$${ideaData.price}`,
             category: ideaData.category,
             seller: user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Anonymous',
             user_id: user.id,
@@ -59,7 +63,7 @@ export async function createIdea(ideaData: any): Promise<string> {
             uniqueness: ideaData.uniqueness,
             execution_readiness: ideaData.executionReadiness,
             clarity_score: ideaData.clarityScore,
-            rating: 0,
+            rating: Number(((ideaData.uniqueness + ideaData.clarityScore) / 2 / 20).toFixed(1)),
 
             // Flags
             has_mvp: ideaData.hasMVP,
@@ -76,14 +80,14 @@ export async function createIdea(ideaData: any): Promise<string> {
 
             // Evidence
             evidence_note: ideaData.evidenceNote,
-            evidence_files: [], // Will be updated after upload
+            evidence_files: ideaData.evidenceFiles || "", // Comma-separated URLs from upload
 
             // Metadata
             views: 0,
             status: "New",
             color: "primary",
             variant: "normal",
-            badge: "new",
+            badge: ideaData.typeOfTopic || "New",
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
@@ -100,19 +104,8 @@ export async function createIdea(ideaData: any): Promise<string> {
             throw error;
         }
 
-        // Upload evidence files if any
-        if (ideaData.evidenceFiles && ideaData.evidenceFiles.length > 0) {
-            const fileUrls = await uploadEvidenceFiles(ideaData.evidenceFiles, data.id);
-
-            const { error: updateError } = await supabase
-                .from('ideas')
-                .update({ evidence_files: fileUrls })
-                .eq('id', data.id);
-
-            if (updateError) {
-                console.error('Error updating evidence files:', updateError);
-            }
-        }
+        // Evidence files are already uploaded in frontend and passed as comma-separated string in ideaData.evidenceFiles
+        // No need to re-upload here.
 
         return data.id;
     } catch (error) {
@@ -216,5 +209,49 @@ export async function fetchFeaturedIdeas(limitCount: number = 6): Promise<any[]>
     } catch (error) {
         console.error('Error in fetchFeaturedIdeas:', error);
         throw error;
+    }
+}
+// Fetch platform stats
+export async function fetchPlatformStats(): Promise<{
+    ideasCount: number;
+    creatorsCount: number;
+    totalValue: number;
+    avgSatisfaction: number;
+}> {
+    try {
+        const { data, error } = await supabase
+            .from('ideas')
+            .select('price, rating, user_id');
+
+        if (error) {
+            console.error('Error fetching stats:', error);
+            throw error;
+        }
+
+        const ideasCount = data.length;
+        const uniqueCreators = new Set(data.map(idea => idea.user_id)).size;
+
+        const totalValue = data.reduce((sum, idea) => {
+            const price = Number(idea.price.replace(/[^0-9.-]+/g, ""));
+            return sum + (isNaN(price) ? 0 : price);
+        }, 0);
+
+        const avgRating = data.reduce((sum, idea) => sum + (idea.rating || 0), 0) / (ideasCount || 1);
+        const avgSatisfaction = Math.round((avgRating / 5) * 100);
+
+        return {
+            ideasCount,
+            creatorsCount: uniqueCreators,
+            totalValue,
+            avgSatisfaction: avgSatisfaction || 0
+        };
+    } catch (error) {
+        console.error('Error in fetchPlatformStats:', error);
+        return {
+            ideasCount: 0,
+            creatorsCount: 0,
+            totalValue: 0,
+            avgSatisfaction: 0
+        };
     }
 }

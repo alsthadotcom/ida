@@ -214,6 +214,7 @@ textarea,
 
   .glass-card {
     @apply bg-card/40 backdrop-blur-2xl border border-border/30 rounded-2xl;
+    pointer-events: auto;
   }
 
   /* Mesh Gradient Background */

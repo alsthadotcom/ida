@@ -27,6 +27,7 @@ const Cookies = lazy(() => import("./pages/Cookies"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const BuyIdea = lazy(() => import("./pages/BuyIdea"));
 const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
+const Profile = lazy(() => import("./pages/Profile"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <SubmitIdea />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
                     </ProtectedRoute>
                   }
                 />

@@ -1,29 +1,60 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Users, Zap, Shield } from "lucide-react";
+import { fetchPlatformStats } from "@/services/ideaService";
 
 const Stats = () => {
+    const [statsData, setStatsData] = useState({
+        ideasCount: 0,
+        creatorsCount: 0,
+        totalValue: 0,
+        avgSatisfaction: 0,
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadStats = async () => {
+            const data = await fetchPlatformStats();
+            setStatsData(data);
+            setLoading(false);
+        };
+        loadStats();
+    }, []);
+
+    const formatNumber = (num: number) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + "M+";
+        if (num >= 1000) return (num / 1000).toFixed(1) + "K+";
+        return num.toString();
+    };
+
+    const formatCurrency = (num: number) => {
+        if (num >= 1000000) return "$" + (num / 1000000).toFixed(1) + "M+";
+        if (num >= 1000) return "$" + (num / 1000).toFixed(1) + "K+";
+        return "$" + num.toLocaleString();
+    };
+
     const stats = [
         {
             icon: TrendingUp,
-            value: "10K+",
+            value: loading ? "..." : formatNumber(statsData.ideasCount),
             label: "Ideas Listed",
             color: "primary",
         },
         {
             icon: Users,
-            value: "50K+",
-            label: "Active Users",
+            value: loading ? "..." : formatNumber(statsData.creatorsCount),
+            label: "Active Creators",
             color: "secondary",
         },
         {
             icon: Zap,
-            value: "$2M+",
-            label: "Creator Earnings",
+            value: loading ? "..." : formatCurrency(statsData.totalValue),
+            label: "Total Listing Value",
             color: "accent",
         },
         {
             icon: Shield,
-            value: "95%",
+            value: loading ? "..." : statsData.avgSatisfaction + "%",
             label: "Satisfaction Rate",
             color: "primary",
         },

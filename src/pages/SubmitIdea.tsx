@@ -2,6 +2,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { createIdea } from "@/services/ideaService";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   ArrowRight,
@@ -19,6 +22,7 @@ import {
   Handshake,
   Zap,
   File,
+  X,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -39,6 +43,8 @@ import { Slider } from "@/components/ui/slider";
 import { CATEGORIES, TOPIC_TYPES, TARGET_AUDIENCES, REGIONS } from "@/constants/marketplace";
 
 const SubmitIdea = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     title: "",
@@ -60,6 +66,8 @@ const SubmitIdea = () => {
     typeOfTopic: "",
     evidenceNote: "",
   });
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; url: string; size: number }>>([]);
+  const [uploading, setUploading] = useState(false);
   const [aiValidation, setAiValidation] = useState({
     status: "idle" as "idle" | "validating" | "passed" | "failed",
     score: 0,
@@ -103,6 +111,110 @@ const SubmitIdea = () => {
     }, 2000);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const validTypes = [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "video/mp4",
+      "audio/mpeg",
+      "text/plain",
+    ];
+
+    const maxSize = 50 * 1024 * 1024; // 50MB
+
+    try {
+      setUploading(true);
+      const newFiles: Array<{ name: string; url: string; size: number }> = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file type
+        if (!validTypes.includes(file.type)) {
+          toast({
+            title: "Invalid file type",
+            description: `${file.name} is not a supported file type`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Validate file size
+        if (file.size > maxSize) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds 50MB limit`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Upload to Supabase
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${user?.id}-${Date.now()}-${i}.${fileExt}`;
+        const filePath = `evidence/${user?.id}/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from("idea-files")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) {
+          console.error("Upload error:", error);
+          toast({
+            title: "Upload failed",
+            description: `Failed to upload ${file.name}`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from("idea-files")
+          .getPublicUrl(filePath);
+
+        newFiles.push({
+          name: file.name,
+          url: publicUrl,
+          size: file.size,
+        });
+      }
+
+      setUploadedFiles([...uploadedFiles, ...newFiles]);
+      toast({
+        title: "Success",
+        description: `${newFiles.length} file(s) uploaded successfully`,
+      });
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload files",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset input
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
+    toast({
+      title: "File removed",
+      description: "File has been removed from the list",
+    });
+  };
+
   const handleSubmitIdea = async () => {
     try {
       const ideaData = {
@@ -123,6 +235,9 @@ const SubmitIdea = () => {
         lookingForPartner: formData.lookingForPartner,
         typeOfTopic: formData.typeOfTopic,
         evidenceNote: formData.evidenceNote,
+        evidenceFiles: Array.isArray(uploadedFiles) && uploadedFiles.length > 0
+          ? uploadedFiles.map(f => f.url).join(",")
+          : "",
       };
       await createIdea(ideaData);
       alert("Success! Your idea has been submitted.");
@@ -278,8 +393,42 @@ const SubmitIdea = () => {
                         <Upload className="w-10 h-10 mx-auto text-primary mb-3" />
                         <p className="text-foreground font-medium">Upload Project Files</p>
                         <p className="text-muted-foreground text-sm mt-1">DOCX, PDF, PPT, MP4, MP3, TXT (max 50MB)</p>
-                        <Button variant="outline" className="mt-4">Browse Files</Button>
+                        <label htmlFor="file-upload">
+                          <Button variant="outline" className="mt-4" disabled={uploading} type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+                            {uploading ? "Uploading..." : "Browse Files"}
+                          </Button>
+                        </label>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          multiple
+                          accept=".docx,.pdf,.ppt,.pptx,.mp4,.mp3,.txt"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                        />
                       </div>
+                      {uploadedFiles.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          <p className="text-sm font-medium">Uploaded Files:</p>
+                          {uploadedFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50">
+                              <div className="flex items-center gap-2">
+                                <File className="w-4 h-4 text-primary" />
+                                <span className="text-sm">{file.name}</span>
+                                <span className="text-xs text-muted-foreground">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveFile(index)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor="evidenceNote">Additional Notes</Label>
                         <Textarea id="evidenceNote" placeholder="Describe MVP features, roadmap milestones..." value={formData.evidenceNote} onChange={(e) => handleInputChange("evidenceNote", e.target.value)} className="bg-background/50" />

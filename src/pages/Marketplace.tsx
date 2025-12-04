@@ -17,20 +17,9 @@ import { Slider } from "@/components/ui/slider";
 import IdeaDetailModal from "@/components/ui/IdeaDetailModal";
 import { fetchIdeas } from "@/services/ideaService";
 
-const categories = [
-  "All Categories",
-  "SaaS",
-  "E-commerce",
-  "Marketing",
-  "Startup",
-  "Finance",
-  "Health & Wellness",
-  "Education",
-  "Entertainment",
-  "Mobile",
-  "AI",
-  "Content",
-];
+import { CATEGORIES } from "@/constants/marketplace";
+
+const categories = ["All Categories", ...CATEGORIES];
 
 // Ideas will be loaded from Supabase
 
@@ -161,7 +150,7 @@ const Marketplace = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 100000]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIdea, setSelectedIdea] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -202,7 +191,9 @@ const Marketplace = () => {
     const matchesSearch = idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       idea.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "All Categories" || idea.category === selectedCategory;
-    const priceNum = parseInt(idea.price.replace('$', ''));
+    // Handle price parsing safely (remove $ and commas)
+    const priceStr = idea.price.toString().replace(/[^0-9.]/g, '');
+    const priceNum = parseFloat(priceStr) || 0;
     const matchesPrice = priceNum >= priceRange[0] && priceNum <= priceRange[1];
     return matchesSearch && matchesCategory && matchesPrice;
   });
@@ -305,13 +296,13 @@ const Marketplace = () => {
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
-                      max={1000}
-                      step={10}
+                      max={100000}
+                      step={100}
                       className="w-full"
                     />
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => {
-                    setPriceRange([0, 1000]);
+                    setPriceRange([0, 100000]);
                     setSelectedCategory("All Categories");
                     setSearchQuery("");
                   }}>

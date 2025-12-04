@@ -72,12 +72,12 @@ const Navbar = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/marketplace?category=Mobile%20Apps" className="cursor-pointer">
+                  <Link to="/marketplace?category=Mobile%20App" className="cursor-pointer">
                     Mobile Apps
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/marketplace?category=AI%20Tools" className="cursor-pointer">
+                  <Link to="/marketplace?category=AI%20%2F%20ML" className="cursor-pointer">
                     AI Tools
                   </Link>
                 </DropdownMenuItem>
