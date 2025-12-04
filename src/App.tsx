@@ -25,6 +25,8 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Cookies = lazy(() => import("./pages/Cookies"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const BuyIdea = lazy(() => import("./pages/BuyIdea"));
+const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
 
 const queryClient = new QueryClient();
 
@@ -66,6 +68,8 @@ const App = () => (
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/cookies" element={<Cookies />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/buy/:slug" element={<BuyIdea />} />
+                <Route path="/demo/:slug" element={<IdeaDemo />} />
                 {/* Catch all route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

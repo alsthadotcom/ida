@@ -1,104 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, TrendingUp, Zap, Star, Shield, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import IdeaDetailModal from "@/components/ui/IdeaDetailModal";
+import { fetchFeaturedIdeas } from "@/services/ideaService";
 
 const FeaturedIdeas = () => {
   const [selectedIdea, setSelectedIdea] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const ideas = [
-    {
-      id: 1,
-      title: "AI SaaS Boilerplate",
-      description: "Complete Next.js starter with AI integration, authentication, payments, and analytics. Production-ready in 24 hours.",
-      price: "$299",
-      uniqueness: 98,
-      views: 1247,
-      category: "SaaS",
-      seller: "Alex Chen",
-      variant: 'large',
-      color: 'primary',
-      badge: 'hot',
-      rating: 4.9,
-      status: "Hot"
-    },
-    {
-      id: 2,
-      title: "Sustainable E-commerce Blueprint",
-      description: "End-to-end business model for eco-friendly brands. Supply chain, marketing, carbon-neutral logistics.",
-      price: "$449",
-      uniqueness: 87,
-      views: 892,
-      category: "E-commerce",
-      seller: "Sarah Park",
-      variant: 'normal',
-      color: 'secondary',
-      badge: 'new',
-      rating: 4.7,
-      status: "New"
-    },
-    {
-      id: 3,
-      title: "Community Growth Playbook",
-      description: "Build and monetize online communities. Engagement formulas, event templates, revenue models.",
-      price: "$199",
-      uniqueness: 91,
-      views: 2103,
-      category: "Marketing",
-      seller: "Marcus J.",
-      variant: 'normal',
-      color: 'accent',
-      badge: 'trending',
-      rating: 4.8,
-      status: "Trending"
-    },
-    {
-      id: 4,
-      title: "Micro-SaaS Validation Toolkit",
-      description: "Step-by-step validation for micro-SaaS ideas. Landing pages, surveys, MVP specs.",
-      price: "$149",
-      uniqueness: 82,
-      views: 567,
-      category: "Startup",
-      seller: "Emma Wilson",
-      variant: 'normal',
-      color: 'primary',
-      rating: 4.6,
-      status: "Popular"
-    },
-    {
-      id: 5,
-      title: "Fitness App Framework",
-      description: "Mobile-first design system with workout tracking, nutrition planning, and social features.",
-      price: "$349",
-      uniqueness: 95,
-      views: 1456,
-      category: "Mobile",
-      seller: "David Kim",
-      variant: 'wide',
-      color: 'secondary',
-      badge: 'hot',
-      rating: 4.9,
-      status: "Hot"
-    },
-    {
-      id: 6,
-      title: "Creator Economy Monetization",
-      description: "Multi-stream revenue framework for content creators. Courses, memberships, sponsorships.",
-      price: "$249",
-      uniqueness: 89,
-      views: 734,
-      category: "Creator",
-      seller: "Lisa Chen",
-      variant: 'normal',
-      color: 'accent',
-      rating: 4.7,
-      status: "New"
-    },
-  ];
+  useEffect(() => {
+    const loadIdeas = async () => {
+      try {
+        setLoading(true);
+        const fetchedIdeas = await fetchFeaturedIdeas(6);
+        setIdeas(fetchedIdeas);
+      } catch (err) {
+        console.error('Error loading ideas:', err);
+        setError('Failed to load ideas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadIdeas();
+  }, []);
 
   const handleIdeaClick = (idea: any) => {
     setSelectedIdea(idea);
@@ -142,23 +72,23 @@ const FeaturedIdeas = () => {
               viewport={{ once: true }}
               onClick={() => handleIdeaClick(idea)}
               className={`group cursor-pointer relative bg-card/50 backdrop-blur-sm border rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${idea.color === 'primary' ? 'border-primary/20 hover:border-primary/50 hover:shadow-primary/20' :
-                  idea.color === 'secondary' ? 'border-secondary/20 hover:border-secondary/50 hover:shadow-secondary/20' :
-                    'border-accent/20 hover:border-accent/50 hover:shadow-accent/20'
+                idea.color === 'secondary' ? 'border-secondary/20 hover:border-secondary/50 hover:shadow-secondary/20' :
+                  'border-accent/20 hover:border-accent/50 hover:shadow-accent/20'
                 }`}
             >
               <div className="p-6 h-full flex flex-col">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${idea.color === 'primary' ? 'bg-primary/10 text-primary' :
-                      idea.color === 'secondary' ? 'bg-secondary/10 text-secondary' :
-                        'bg-accent/10 text-accent'
+                    idea.color === 'secondary' ? 'bg-secondary/10 text-secondary' :
+                      'bg-accent/10 text-accent'
                     }`}>
                     {idea.category}
                   </span>
                   {idea.badge && (
                     <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${idea.badge === 'hot' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
-                        idea.badge === 'new' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                          'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                      idea.badge === 'new' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                        'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                       }`}>
                       {idea.badge === 'hot' && <Zap className="w-3 h-3" />}
                       {idea.badge === 'new' && <Sparkles className="w-3 h-3" />}
@@ -170,8 +100,8 @@ const FeaturedIdeas = () => {
 
                 {/* Title & Description */}
                 <h3 className={`font-outfit font-bold text-xl mb-3 group-hover:${idea.color === 'primary' ? 'text-primary' :
-                    idea.color === 'secondary' ? 'text-secondary' :
-                      'text-accent'
+                  idea.color === 'secondary' ? 'text-secondary' :
+                    'text-accent'
                   } transition-colors`}>
                   {idea.title}
                 </h3>
@@ -183,8 +113,8 @@ const FeaturedIdeas = () => {
                 <div className="flex items-center gap-4 mt-auto mb-6 pt-4 border-t border-border/50">
                   <div className="flex items-center gap-1.5">
                     <Shield className={`w-4 h-4 ${idea.color === 'primary' ? 'text-primary' :
-                        idea.color === 'secondary' ? 'text-secondary' :
-                          'text-accent'
+                      idea.color === 'secondary' ? 'text-secondary' :
+                        'text-accent'
                       }`} />
                     <span className="text-sm font-bold">{idea.uniqueness}% Unique</span>
                   </div>
@@ -198,8 +128,8 @@ const FeaturedIdeas = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className={`font-outfit font-black text-2xl ${idea.color === 'primary' ? 'gradient-text' :
-                        idea.color === 'secondary' ? 'text-secondary' :
-                          'gradient-text-orange'
+                      idea.color === 'secondary' ? 'text-secondary' :
+                        'gradient-text-orange'
                       }`}>
                       {idea.price}
                     </div>
@@ -208,8 +138,8 @@ const FeaturedIdeas = () => {
                   <Button
                     size="sm"
                     className={`rounded-xl transition-all duration-300 ${idea.color === 'primary' ? 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground' :
-                        idea.color === 'secondary' ? 'bg-secondary/10 text-secondary hover:bg-secondary hover:text-secondary-foreground' :
-                          'bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground'
+                      idea.color === 'secondary' ? 'bg-secondary/10 text-secondary hover:bg-secondary hover:text-secondary-foreground' :
+                        'bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground'
                       }`}
                   >
                     View Details

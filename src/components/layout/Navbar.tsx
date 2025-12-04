@@ -95,6 +95,12 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             <Link
+              to="/submit-idea"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sell Your Idea
+            </Link>
+            <Link
               to="/how-it-works"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >

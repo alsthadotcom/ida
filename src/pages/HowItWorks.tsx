@@ -12,7 +12,7 @@ const steps = [
   {
     icon: Upload,
     title: "Submit Your Idea",
-    description: "Use our simple submission form to describe your idea. Our AI validates uniqueness and provides feedback.",
+    description: "Use our detailed form to describe your idea. Upload MVPs, roadmaps, or other evidence to boost credibility.",
   },
   {
     icon: Shield,
@@ -22,7 +22,7 @@ const steps = [
   {
     icon: Sparkles,
     title: "AI Evaluation",
-    description: "Our AI rates your idea on clarity, originality, execution readiness, and market potential.",
+    description: "Our AI rates your idea on Clarity, Uniqueness, Execution Readiness, and Market Potential.",
   },
   {
     icon: Users,
@@ -40,7 +40,7 @@ const HowItWorks = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           {/* Hero */}
@@ -53,7 +53,7 @@ const HowItWorks = () => {
               How <span className="gradient-text">ida</span> Works
             </h1>
             <p className="text-lg text-muted-foreground">
-              Turn your brilliant ideas into income in just a few simple steps. 
+              Turn your brilliant ideas into income in just a few simple steps.
               Our platform handles validation, protection, and payments.
             </p>
           </motion.div>

@@ -18,7 +18,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                 <div className="grid md:grid-cols-2 h-full max-h-[80vh] overflow-y-auto">
                     {/* Left: Image/Visual */}
                     <div className={`p-8 flex flex-col justify-between relative overflow-hidden ${idea.color === "primary" ? "bg-primary/5" :
-                            idea.color === "secondary" ? "bg-secondary/5" : "bg-accent/5"
+                        idea.color === "secondary" ? "bg-secondary/5" : "bg-accent/5"
                         }`}>
                         <div className="relative z-10">
                             <Badge variant="outline" className="mb-4 bg-background/50 backdrop-blur-sm">
@@ -37,7 +37,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
 
                         {/* Abstract Visual */}
                         <div className={`absolute -right-10 -bottom-10 w-64 h-64 rounded-full blur-3xl opacity-50 ${idea.color === "primary" ? "bg-primary" :
-                                idea.color === "secondary" ? "bg-secondary" : "bg-accent"
+                            idea.color === "secondary" ? "bg-secondary" : "bg-accent"
                             }`} />
 
                         <div className="relative z-10">
@@ -101,10 +101,23 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             </div>
 
                             <div className="pt-4 flex gap-3">
-                                <Button className="flex-1 magnetic-btn bg-primary hover:bg-primary/90 glow-purple">
+                                <Button
+                                    className="flex-1 magnetic-btn bg-primary hover:bg-primary/90 glow-purple"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        window.location.href = `/buy/${idea.slug}`;
+                                    }}
+                                >
                                     Buy Now
                                 </Button>
-                                <Button variant="outline" className="flex-1">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        window.location.href = `/demo/${idea.slug}`;
+                                    }}
+                                >
                                     View Demo
                                 </Button>
                             </div>

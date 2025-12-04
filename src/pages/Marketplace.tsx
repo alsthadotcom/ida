@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import IdeaDetailModal from "@/components/ui/IdeaDetailModal";
+import { fetchIdeas } from "@/services/ideaService";
 
 const categories = [
   "All Categories",
@@ -31,104 +32,7 @@ const categories = [
   "Content",
 ];
 
-const ideas = [
-  {
-    id: 1,
-    title: "AI-Powered SaaS Onboarding Framework",
-    description: "Complete framework for implementing AI-driven user onboarding that increases activation by 40%.",
-    price: "$299",
-    uniqueness: 94,
-    rating: 5,
-    category: "SaaS",
-    seller: "Alex Chen",
-    status: "Hot",
-    color: "primary",
-  },
-  {
-    id: 2,
-    title: "Sustainable E-commerce Blueprint",
-    description: "End-to-end business model for launching an eco-friendly e-commerce brand.",
-    price: "$449",
-    uniqueness: 87,
-    rating: 4,
-    category: "E-commerce",
-    seller: "Sarah Park",
-    status: "New",
-    color: "secondary",
-  },
-  {
-    id: 3,
-    title: "Community-Led Growth Playbook",
-    description: "Proven strategies for building and monetizing online communities.",
-    price: "$199",
-    uniqueness: 91,
-    rating: 5,
-    category: "Marketing",
-    seller: "Marcus Johnson",
-    status: "Trending",
-    color: "accent",
-  },
-  {
-    id: 4,
-    title: "Micro-SaaS Validation Toolkit",
-    description: "Step-by-step validation process for micro-SaaS ideas with templates.",
-    price: "$149",
-    uniqueness: 82,
-    rating: 4,
-    category: "Startup",
-    seller: "Emma Wilson",
-    status: "Popular",
-    color: "primary",
-  },
-  {
-    id: 5,
-    title: "Creator Economy Monetization Guide",
-    description: "Comprehensive framework for creators to diversify revenue streams.",
-    price: "$179",
-    uniqueness: 88,
-    rating: 5,
-    category: "Marketing",
-    seller: "Jordan Lee",
-    status: "New",
-    color: "secondary",
-  },
-  {
-    id: 6,
-    title: "FinTech MVP Development Roadmap",
-    description: "Technical and regulatory roadmap for launching a FinTech product.",
-    price: "$599",
-    uniqueness: 96,
-    rating: 5,
-    category: "Finance",
-    seller: "Rachel Kim",
-    status: "Hot",
-    color: "accent",
-  },
-  {
-    id: 7,
-    title: "Mental Health App Framework",
-    description: "Complete UX and feature framework for building mental health applications.",
-    price: "$349",
-    uniqueness: 89,
-    rating: 4,
-    category: "Health & Wellness",
-    seller: "Dr. Michael Scott",
-    status: "Popular",
-    color: "primary",
-  },
-  {
-    id: 8,
-    title: "EdTech Gamification System",
-    description: "Engagement framework using game mechanics for educational platforms.",
-    price: "$279",
-    uniqueness: 85,
-    rating: 5,
-    category: "Education",
-    seller: "Lisa Wang",
-    status: "Trending",
-    color: "secondary",
-  },
-];
+// Ideas will be loaded from Supabase
 
 const UniquenessRing = ({ score, size = "sm" }: { score: number; size?: "sm" | "md" }) => {
   const dimensions = size === "sm" ? { w: 48, r: 20, stroke: 3 } : { w: 64, r: 28, stroke: 4 };
@@ -163,7 +67,7 @@ const UniquenessRing = ({ score, size = "sm" }: { score: number; size?: "sm" | "
   );
 };
 
-const IdeaCard = ({ idea, viewMode, onClick }: { idea: typeof ideas[0]; viewMode: "grid" | "list"; onClick: () => void }) => {
+const IdeaCard = ({ idea, viewMode, onClick }: { idea: any; viewMode: "grid" | "list"; onClick: () => void }) => {
   if (viewMode === "list") {
     return (
       <motion.div
@@ -261,6 +165,30 @@ const Marketplace = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIdea, setSelectedIdea] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Supabase state
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load ideas from Supabase
+  useEffect(() => {
+    const loadIdeas = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedIdeas = await fetchIdeas();
+        setIdeas(fetchedIdeas);
+      } catch (err) {
+        console.error('Error loading ideas:', err);
+        setError('Failed to load ideas from database');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadIdeas();
+  }, []);
 
   // Read category from URL params
   useEffect(() => {
