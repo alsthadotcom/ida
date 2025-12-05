@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { createIdea } from "@/services/ideaService";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,9 +19,9 @@ import {
   Globe,
   Target,
   Handshake,
+  X,
   Zap,
   File,
-  X,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -45,7 +44,10 @@ import { CATEGORIES, TOPIC_TYPES, TARGET_AUDIENCES, REGIONS } from "@/constants/
 const SubmitIdea = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: number; file: File }>>([]);
+  const [uploading, setUploading] = useState(false);
   const [step, setStep] = useState(1);
+
   const [formData, setFormData] = useState({
     title: "",
     shortDescription: "",
@@ -66,8 +68,6 @@ const SubmitIdea = () => {
     typeOfTopic: "",
     evidenceNote: "",
   });
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; url: string; size: number }>>([]);
-  const [uploading, setUploading] = useState(false);
   const [aiValidation, setAiValidation] = useState({
     status: "idle" as "idle" | "validating" | "passed" | "failed",
     score: 0,
@@ -110,7 +110,6 @@ const SubmitIdea = () => {
       });
     }, 2000);
   };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -123,86 +122,57 @@ const SubmitIdea = () => {
       "video/mp4",
       "audio/mpeg",
       "text/plain",
+      "application/zip",
+      "application/x-zip-compressed",
     ];
 
     const maxSize = 50 * 1024 * 1024; // 50MB
 
     try {
       setUploading(true);
-      const newFiles: Array<{ name: string; url: string; size: number }> = [];
+      const newFiles: Array<{ name: string; size: number; file: File }> = [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        // Validate file type
         if (!validTypes.includes(file.type)) {
           toast({
             title: "Invalid file type",
-            description: `${file.name} is not a supported file type`,
+            description: `${file.name} is not supported`,
             variant: "destructive",
           });
           continue;
         }
 
-        // Validate file size
         if (file.size > maxSize) {
           toast({
             title: "File too large",
-            description: `${file.name} exceeds 50MB limit`,
+            description: `${file.name} exceeds 50MB`,
             variant: "destructive",
           });
           continue;
         }
-
-        // Upload to Supabase
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${user?.id}-${Date.now()}-${i}.${fileExt}`;
-        const filePath = `evidence/${user?.id}/${fileName}`;
-
-        const { data, error } = await supabase.storage
-          .from("idea-files")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (error) {
-          console.error("Upload error:", error);
-          toast({
-            title: "Upload failed",
-            description: `Failed to upload ${file.name}`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from("idea-files")
-          .getPublicUrl(filePath);
 
         newFiles.push({
           name: file.name,
-          url: publicUrl,
           size: file.size,
+          file: file,
         });
       }
 
       setUploadedFiles([...uploadedFiles, ...newFiles]);
       toast({
-        title: "Success",
-        description: `${newFiles.length} file(s) uploaded successfully`,
+        title: "Files Ready",
+        description: `${newFiles.length} file(s) ready for GitHub`,
       });
     } catch (error) {
-      console.error("Error uploading files:", error);
       toast({
         title: "Error",
-        description: "Failed to upload files",
+        description: "Failed to process files",
         variant: "destructive",
       });
     } finally {
       setUploading(false);
-      // Reset input
       e.target.value = "";
     }
   };
@@ -211,12 +181,54 @@ const SubmitIdea = () => {
     setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
     toast({
       title: "File removed",
-      description: "File has been removed from the list",
     });
   };
-
   const handleSubmitIdea = async () => {
     try {
+      if (!user) {
+        toast({
+          title: "Login Required",
+          description: "Please log in to submit",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let githubRepoUrl = '';
+      let githubFileUrls: string[] = [];
+
+      // Upload files to GitHub
+      if (uploadedFiles.length > 0) {
+        toast({
+          title: "Uploading to GitHub",
+          description: "Please wait...",
+        });
+
+        try {
+          const { uploadMVPFilesToGitHub } = await import('@/services/githubService');
+
+          const result = await uploadMVPFilesToGitHub(
+            user.id,
+            formData.title,
+            uploadedFiles.map(f => f.file)
+          );
+
+          githubRepoUrl = result.repoUrl;
+          githubFileUrls = result.fileUrls;
+
+          toast({
+            title: "Upload Complete!",
+          });
+        } catch (error: any) {
+          toast({
+            title: "Upload Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       const ideaData = {
         title: formData.title,
         description: formData.longDescription,
@@ -235,16 +247,26 @@ const SubmitIdea = () => {
         lookingForPartner: formData.lookingForPartner,
         typeOfTopic: formData.typeOfTopic,
         evidenceNote: formData.evidenceNote,
-        evidenceFiles: Array.isArray(uploadedFiles) && uploadedFiles.length > 0
-          ? uploadedFiles.map(f => f.url).join(",")
-          : "",
+        githubRepoUrl: githubRepoUrl,
+        mvpFileUrls: githubFileUrls.join(','),
       };
+
       await createIdea(ideaData);
-      alert("Success! Your idea has been submitted.");
-      window.location.href = "/marketplace";
+
+      toast({
+        title: "Success!",
+        description: "Idea submitted!",
+      });
+
+      setTimeout(() => {
+        window.location.href = "/marketplace";
+      }, 1500);
     } catch (error: any) {
-      console.error("Error submitting idea:", error);
-      alert(`Error: ${error.message || "Failed to submit idea."}`);
+      toast({
+        title: "Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -321,6 +343,16 @@ const SubmitIdea = () => {
                   <Textarea id="shortDescription" placeholder="A brief summary (max 200 chars)" maxLength={200} value={formData.shortDescription} onChange={(e) => handleInputChange("shortDescription", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
                   <p className="text-xs text-muted-foreground text-right">{formData.shortDescription.length}/200</p>
                 </div>
+                {/* Topic Type (Badge) */}
+                <div className="space-y-2">
+                  <Label htmlFor="typeOfTopic" className="text-foreground flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-accent" /> Topic Type
+                  </Label>
+                  <Select value={formData.typeOfTopic} onValueChange={(v) => handleInputChange("typeOfTopic", v)}>
+                    <SelectTrigger className="h-12 bg-muted/50 border-border/50"><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>{TOPIC_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
                 {/* Category & Topic Type */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -393,35 +425,42 @@ const SubmitIdea = () => {
                         <Upload className="w-10 h-10 mx-auto text-primary mb-3" />
                         <p className="text-foreground font-medium">Upload Project Files</p>
                         <p className="text-muted-foreground text-sm mt-1">DOCX, PDF, PPT, MP4, MP3, TXT (max 50MB)</p>
-                        <label htmlFor="file-upload">
-                          <Button variant="outline" className="mt-4" disabled={uploading} type="button" onClick={() => document.getElementById('file-upload')?.click()}>
-                            {uploading ? "Uploading..." : "Browse Files"}
-                          </Button>
-                        </label>
                         <input
                           id="file-upload"
                           type="file"
                           multiple
-                          accept=".docx,.pdf,.ppt,.pptx,.mp4,.mp3,.txt"
+                          accept=".docx,.pdf,.ppt,.pptx,.mp4,.mp3,.txt,.zip"
                           className="hidden"
                           onChange={handleFileUpload}
                         />
+                        <Button
+                          variant="outline"
+                          className="mt-4"
+                          disabled={uploading}
+                          type="button"
+                          onClick={() => document.getElementById('file-upload')?.click()}
+                        >
+                          {uploading ? "Uploading..." : "Browse Files"}
+                        </Button>
                       </div>
+
                       {uploadedFiles.length > 0 && (
-                        <div className="space-y-2 mb-4">
-                          <p className="text-sm font-medium">Uploaded Files:</p>
+                        <div className="mb-6 space-y-2">
+                          <p className="text-sm font-medium">Selected Files:</p>
                           {uploadedFiles.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50">
+                            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border">
                               <div className="flex items-center gap-2">
-                                <File className="w-4 h-4 text-primary" />
+                                <File className="w-4 h-4" />
                                 <span className="text-sm">{file.name}</span>
-                                <span className="text-xs text-muted-foreground">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                </span>
                               </div>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                type="button"
                                 onClick={() => handleRemoveFile(index)}
-                                className="text-destructive hover:text-destructive"
                               >
                                 <X className="w-4 h-4" />
                               </Button>

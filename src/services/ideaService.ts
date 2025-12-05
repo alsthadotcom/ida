@@ -80,8 +80,8 @@ export async function createIdea(ideaData: any): Promise<string> {
 
             // Evidence
             evidence_note: ideaData.evidenceNote,
-            evidence_files: ideaData.evidenceFiles || "", // Comma-separated URLs from upload
-
+            github_repo_url: ideaData.githubRepoUrl || "",
+            mvp_file_urls: ideaData.mvpFileUrls || "",
             // Metadata
             views: 0,
             status: "New",

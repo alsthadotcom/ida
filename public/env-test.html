@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Variables Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Environment Variables Debug Page</h1>
+        <p>This page will show you what environment variables Vite is loading.</p>
+    </div>
+
+    <div class="card">
+        <h2>GitHub Token Status:</h2>
+        <div id="github-status"></div>
+    </div>
+
+    <div class="card">
+        <h2>All Environment Variables:</h2>
+        <pre id="all-env"></pre>
+    </div>
+
+    <div class="card">
+        <h2>✅ Next Steps:</h2>
+        <ol id="instructions"></ol>
+    </div>
+
+    <script type="module">
+        // Check GitHub token
+        const githubToken = import.meta.env.VITE_GITHUB_TOKEN;
+        const statusDiv = document.getElementById('github-status');
+        
+        if (githubToken) {
+            const maskedToken = githubToken.substring(0, 8) + '...';
+            statusDiv.innerHTML = `
+                <p class="success">✅ GitHub Token Found!</p>
+                <p>Value: <code>${maskedToken}</code></p>
+                <p>Length: ${githubToken.length} characters</p>
+            `;
+        } else {
+            statusDiv.innerHTML = `
+                <p class="error">❌ GitHub Token NOT Found</p>
+                <p>The VITE_GITHUB_TOKEN environment variable is not loaded.</p>
+            `;
+        }
+
+        // Show all environment variables
+        const allEnvDiv = document.getElementById('all-env');
+        const envVars = import.meta.env;
+        const sanitized = {};
+        
+        for (const key in envVars) {
+            if (key.includes('TOKEN') || key.includes('KEY')) {
+                // Mask sensitive data
+                sanitized[key] = envVars[key] ? envVars[key].substring(0, 8) + '...' : 'undefined';
+            } else {
+                sanitized[key] = envVars[key];
+            }
+        }
+        
+        allEnvDiv.textContent = JSON.stringify(sanitized, null, 2);
+
+        // Show instructions
+        const instructionsDiv = document.getElementById('instructions');
+        if (!githubToken) {
+            instructionsDiv.innerHTML = `
+                <li>Stop your dev server (Ctrl+C)</li>
+                <li>Verify your <code>.env.local</code> file has: <code>VITE_GITHUB_TOKEN=ghp_...</code></li>
+                <li>NO quotes around the value</li>
+                <li>NO spaces before or after the =</li>
+                <li>Restart dev server: <code>npm run dev</code></li>
+                <li>Refresh this page and check again</li>
+            `;
+        } else {
+            instructionsDiv.innerHTML = `
+                <li class="success">✅ Token is loaded! You can now submit ideas with MVP files.</li>
+                <li class="success">✅ Files will be uploaded to: <code>https://github.com/idaaz/{user-id}</code></li>
+                <li>Go to <a href="/submit-idea">/submit-idea</a> and try submitting!</li>
+            `;
+        }
+    </script>
+</body>
+</html>

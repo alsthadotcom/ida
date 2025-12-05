@@ -135,33 +135,18 @@ body {
 }
 
 .cursor-dot-simple {
-  width: 12px;
-  height: 12px;
+  width: 20px;
+  height: 20px;
   background: hsl(262 83% 68%);
   border-radius: 50%;
   position: fixed;
-  top: -6px;
-  left: -6px;
+  top: -10px;
+  left: -10px;
   pointer-events: none;
   z-index: 2147483647;
   will-change: transform;
   transition: transform 0.065s ease-out;
-}
-
-/* Show default cursor on interactive elements */
-a,
-button,
-input,
-textarea,
-select,
-[role="button"] {
-  cursor: pointer !important;
-}
-
-a *,
-button *,
-[role="button"] * {
-  cursor: pointer !important;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
 }
 
 /* Allow selection in input fields */

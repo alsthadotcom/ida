@@ -1,177 +1,138 @@
-# 🎯 QUICK REFERENCE - File Uploads
+# 🚀 Quick Reference Card
 
-## Avatar Upload (Profile Page)
+## What You Got
 
-### Location
-`/profile` → Hover over avatar → Click camera icon
+### ✅ Google OAuth Login
+**Files**: `Login.tsx`, `Signup.tsx`  
+**Button**: "Sign in with Google" (with Google logo)  
+**Provider**: Supabase Auth → Google OAuth
 
-### Accepted Files
-- JPEG, JPG, PNG, GIF, WebP
-- Max 5MB
-
-### What Happens
-1. Click camera icon on avatar
-2. Select image file
-3. Validates file type and size
-4. Uploads to Supabase Storage: `avatars/{user_id}/{filename}`
-5. Saves URL to database: `profiles.avatar_url`
-6. Shows success toast
-7. Avatar updates instantly
-8. **PERMANENT** - Persists after refresh
-
-### Code Location
-`src/pages/Profile.tsx` → `handleAvatarUpload()`
+### ✅ GitHub MVP Storage
+**File**: `src/services/githubService.ts`  
+**Username**: `idaaz`  
+**Repo Naming**: User UID (e.g., `abc123-user-id`)  
+**Folder Structure**: `/mvp-files/filename.ext`
 
 ---
 
-## Evidence Files (Submit Idea Page)
+## Setup Checklist
 
-### Location
-`/submit-idea` → Step 2 → Enable "Has MVP" or "Has Detailed Roadmap"
+### Google OAuth (5 minutes):
+1. [ ] Open Supabase Dashboard
+2. [ ] Auth → Providers → Enable Google
+3. [ ] Copy callback URL
+4. [ ] Google Cloud Console → Create OAuth Client
+5. [ ] Paste Client ID + Secret in Supabase
+6. [ ] Test: Click Google button
 
-### Accepted Files
-- DOCX, PDF, PPT, PPTX, MP4, MP3, TXT
-- Max 50MB per file
-- Multiple files allowed
-
-### What Happens
-1. Click "Browse Files" button
-2. Select one or multiple files
-3. Validates each file type and size
-4. Uploads to Supabase Storage: `idea-files/evidence/{user_id}/{filename}`
-5. Shows uploaded files with size
-6. Can remove files before submission
-7. On submit, saves URLs to database: `ideas.evidence_files` (comma-separated)
-8. **PERMANENT** - Files stored forever
-
-### Code Location
-`src/pages/SubmitIdea.tsx` → `handleFileUpload()` & `handleRemoveFile()`
+### GitHub Integration (3 minutes):
+1. [ ] GitHub Settings → Tokens → Create new
+2. [ ] Select scope: `repo`
+3. [ ] Copy token
+4. [ ] Add to `.env.local`: `VITE_GITHUB_TOKEN=ghp_...`
+5. [ ] Run: `npm install @octokit/rest`
+6. [ ] Run SQL: `add_github_columns.sql`
 
 ---
 
-## Database Setup (REQUIRED)
+## Code Snippets
 
+### Upload Files to GitHub:
+```typescript
+import { uploadMVPFilesToGitHub } from '@/services/githubService';
+
+const { repoUrl, fileUrls } = await uploadMVPFilesToGitHub(
+  user.id,           // Repo name
+  'Idea Title',      // Repo description
+  [file1, file2]     // Files array
+);
+```
+
+### Save to Database:
+```typescript
+await supabase.from('ideas').insert({
+  ...ideaData,
+  github_repo_url: repoUrl,
+  mvp_file_urls: fileUrls.join(',')
+});
+```
+
+---
+
+## Environment Variables
+
+Create `.env.local`:
+```
+VITE_GITHUB_TOKEN=ghp_your_token_here
+```
+
+---
+
+## SQL Commands
+
+Run in Supabase SQL Editor:
 ```sql
--- Run in Supabase SQL Editor
-
--- 1. Create storage bucket for files
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('idea-files', 'idea-files', true)
-ON CONFLICT (id) DO NOTHING;
-
--- 2. Add storage policies
-CREATE POLICY "Idea files are publicly accessible"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'idea-files');
-
-CREATE POLICY "Users can upload idea files"
-  ON storage.objects FOR INSERT
-  WITH CHECK (
-    bucket_id = 'idea-files' AND
-    auth.uid()::text = (storage.foldername(name))[2]
-  );
-
--- 3. Add column to ideas table
-ALTER TABLE ideas 
-ADD COLUMN IF NOT EXISTS evidence_files TEXT;
+ALTER TABLE ideas ADD COLUMN github_repo_url TEXT;
+ALTER TABLE ideas ADD COLUMN mvp_file_urls TEXT;
 ```
 
 ---
 
-## Error Messages
+## Links
 
-### Avatar Upload
-- ❌ "Please upload a valid image file" → Wrong file type
-- ❌ "File size must be less than 5MB" → File too large
-- ❌ "Failed to upload avatar" → Upload error
-- ✅ "Avatar uploaded and saved successfully" → Success!
-
-### Evidence Files
-- ❌ "{filename} is not a supported file type" → Wrong type
-- ❌ "{filename} exceeds 50MB limit" → Too large
-- ❌ "Failed to upload {filename}" → Upload error
-- ✅ "{count} file(s) uploaded successfully" → Success!
+- **Supabase Dashboard**: https://supabase.com/dashboard
+- **Google Cloud Console**: https://console.cloud.google.com
+- **GitHub Token Settings**: https://github.com/settings/tokens
 
 ---
 
-## Storage Paths
+## File Locations
 
-### Avatar
 ```
-Storage: avatars/{user_id}/{user_id}-{timestamp}.{ext}
-Database: profiles.avatar_url = "https://...supabase.co/storage/v1/object/public/avatars/..."
-```
+src/
+├── services/
+│   └── githubService.ts          ← GitHub integration
+├── pages/
+│   ├── Login.tsx                 ← Google OAuth button
+│   └── Signup.tsx                ← Google OAuth button
+└── .env.local                    ← GitHub token (create this)
 
-### Evidence Files
-```
-Storage: idea-files/evidence/{user_id}/{user_id}-{timestamp}-{index}.{ext}
-Database: ideas.evidence_files = "url1,url2,url3"
+Documentation:
+├── GOOGLE_GITHUB_SETUP.md        ← Full setup guide
+├── GITHUB_INTEGRATION_EXAMPLE.md ← Code examples
+├── IMPLEMENTATION_SUMMARY.md     ← What was done
+└── add_github_columns.sql        ← Database update
 ```
 
 ---
 
-## Testing Checklist
+## Common Commands
 
-### Avatar Upload
-- [ ] Login to account
-- [ ] Go to `/profile`
-- [ ] Hover over avatar
-- [ ] See camera icon appear
-- [ ] Click camera icon
-- [ ] Select valid image (JPG/PNG)
-- [ ] See "Uploading..." toast
-- [ ] See "Success!" toast
-- [ ] Avatar updates immediately
-- [ ] Refresh page
-- [ ] Avatar still shows (persists)
+```bash
+# Install packages
+npm install @octokit/rest
 
-### File Upload
-- [ ] Login to account
-- [ ] Go to `/submit-idea`
-- [ ] Fill Step 1 (basic info)
-- [ ] Go to Step 2
-- [ ] Toggle "Has MVP" ON
-- [ ] See Evidence section appear
-- [ ] Click "Browse Files"
-- [ ] Select multiple files
-- [ ] See upload progress
-- [ ] See files listed below
-- [ ] Click X to remove a file
-- [ ] File disappears from list
-- [ ] Submit idea
-- [ ] Check database for file URLs
+# Fix PowerShell (if needed)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Run dev server
+npm run dev
+
+# Test login  
+# Go to: http://localhost:5173/login
+```
 
 ---
 
-## Troubleshooting
+## 🆘 Troubleshooting
 
-### Avatar not showing after upload?
-1. Check browser console for errors
-2. Verify Supabase storage bucket "avatars" exists
-3. Check storage policies are correct
-4. Try hard refresh (Ctrl+Shift+R)
-
-### Files not uploading?
-1. Check file type is in allowed list
-2. Check file size is under limit
-3. Verify Supabase storage bucket "idea-files" exists
-4. Check browser console for errors
-5. Ensure user is logged in
-
-### Files not saving to database?
-1. Check `ideas` table has `evidence_files` column
-2. Verify column type is TEXT
-3. Check `ideaService.ts` includes `evidenceFiles`
-4. Look at browser network tab for API errors
+| Problem | Solution |
+|---------|----------|
+| npm won't run | Run PowerShell as Admin → `Set-ExecutionPolicy` |
+| Google login fails | Check redirect URL in Google Console |
+| GitHub upload fails | Verify token has `repo` scope |
+| Octokit not found | Run `npm install @octokit/rest` |
 
 ---
 
-## Support Files
-
-- `FILE_UPLOAD_SETUP.md` - Detailed setup guide
-- `FIXES_SUMMARY.md` - Summary of all fixes
-- `PROFILE_SETUP.md` - Profile page setup
-
----
-
-**Everything is working! Just run the SQL and test!** ✅
+**Done!** Now follow `GOOGLE_GITHUB_SETUP.md` for detailed instructions.

@@ -28,6 +28,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const BuyIdea = lazy(() => import("./pages/BuyIdea"));
 const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
 const Profile = lazy(() => import("./pages/Profile"));
+const EnvTest = lazy(() => import("./pages/EnvTest"));
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/buy/:slug" element={<BuyIdea />} />
                 <Route path="/demo/:slug" element={<IdeaDemo />} />
+                <Route path="/env-test" element={<EnvTest />} />
                 {/* Catch all route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
