@@ -47,6 +47,8 @@ const SubmitIdea = () => {
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: number; file: File }>>([]);
   const [uploading, setUploading] = useState(false);
   const [step, setStep] = useState(1);
+  const [manualToken, setManualToken] = useState("");
+  const envTokenExists = !!import.meta.env.VITE_GITHUB_TOKEN;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -199,6 +201,19 @@ const SubmitIdea = () => {
 
       // Upload files to GitHub
       if (uploadedFiles.length > 0) {
+
+        // Determine which token to use
+        const tokenToUse = envTokenExists ? undefined : manualToken;
+
+        if (!envTokenExists && !manualToken) {
+          toast({
+            title: "Missing GitHub Token",
+            description: "Please enter your GitHub token to proceed with file upload.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
           title: "Uploading to GitHub",
           description: "Please wait...",
@@ -210,11 +225,17 @@ const SubmitIdea = () => {
           const result = await uploadMVPFilesToGitHub(
             user.id,
             formData.title,
-            uploadedFiles.map(f => f.file)
+            uploadedFiles.map(f => f.file),
+            tokenToUse // Pass manual token if needed
           );
+
 
           githubRepoUrl = result.repoUrl;
           githubFileUrls = result.fileUrls;
+
+          // Alert user of the successful creation URL for verification
+          alert(`Success! Repository created at: ${result.repoUrl}`);
+
 
           toast({
             title: "Upload Complete!",
@@ -421,6 +442,22 @@ const SubmitIdea = () => {
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4 pt-4 border-t border-border/50">
                     <h3 className="font-semibold text-foreground flex items-center gap-2"><File className="w-5 h-5 text-primary" /> Evidence & Documentation</h3>
                     <div className="p-6 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5">
+                      {!envTokenExists && (
+                        <div className="mb-6 text-left p-3 border border-yellow-500/30 bg-yellow-500/10 rounded-lg">
+                          <Label htmlFor="manualToken" className="block mb-2 text-yellow-600 font-medium">GitHub Token Required</Label>
+                          <Input
+                            id="manualToken"
+                            type="password"
+                            placeholder="Paste your Classic Token (ghp_...) here"
+                            value={manualToken}
+                            onChange={(e) => setManualToken(e.target.value)}
+                            className="bg-background border-input"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            System could not detect VITE_GITHUB_TOKEN in .env.local. Please enter it manually to upload files.
+                          </p>
+                        </div>
+                      )}
                       <div className="text-center mb-6">
                         <Upload className="w-10 h-10 mx-auto text-primary mb-3" />
                         <p className="text-foreground font-medium">Upload Project Files</p>

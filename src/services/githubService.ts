@@ -2,24 +2,54 @@ import { Octokit } from '@octokit/rest';
 
 // GitHub configuration
 const GITHUB_TOKEN = import.meta.env.VITE_GITHUB_TOKEN;
-const GITHUB_OWNER = 'idaaz'; // Your GitHub username
+console.log('[GithubService] Token available:', !!GITHUB_TOKEN); // Debug log
 
 const octokit = new Octokit({
     auth: GITHUB_TOKEN,
 });
 
 /**
- * Create a GitHub repository for an idea
- * @param repoName - Name of the repository (user UID)
- * @param description - Repository description
+ * Get an authenticated Octokit client
+ * (Uses override token if provided, otherwise falls back to env var)
  */
-export async function createGitHubRepo(repoName: string, description: string): Promise<string> {
+const getClient = (tokenOverride?: string) => {
+    if (tokenOverride) {
+        return new Octokit({ auth: tokenOverride });
+    }
+    return octokit;
+};
+
+/**
+ * Get the authenticated user's details
+ */
+export async function getAuthenticatedUser(tokenOverride?: string) {
     try {
-        const { data } = await octokit.repos.createForAuthenticatedUser({
+        const client = getClient(tokenOverride);
+        const { data } = await client.users.getAuthenticated();
+        return data.login;
+    } catch (error) {
+        console.error('Error fetching authenticated user:', error);
+        throw new Error('Failed to authenticate with GitHub. Please check your token.');
+    }
+}
+
+/**
+ * Create a GitHub repository for an idea (under specific owner)
+ */
+export async function createGitHubRepo(
+    repoName: string,
+    description: string,
+    owner: string,
+    tokenOverride?: string
+): Promise<string> {
+    try {
+        const client = getClient(tokenOverride);
+        // Use createForAuthenticatedUser to create repo under the user's account
+        const { data } = await client.repos.createForAuthenticatedUser({
             name: repoName,
             description: description,
-            private: false, // Set to true if you want private repos
-            auto_init: true, // Initialize with README
+            private: true,
+            auto_init: true,
         });
 
         console.log('GitHub repo created:', data.html_url);
@@ -27,7 +57,7 @@ export async function createGitHubRepo(repoName: string, description: string): P
     } catch (error: any) {
         if (error.status === 422) {
             // Repo already exists, return the URL
-            return `https://github.com/${GITHUB_OWNER}/${repoName}`;
+            return `https://github.com/${owner}/${repoName}`;
         }
         console.error('Error creating GitHub repo:', error);
         throw new Error(`Failed to create GitHub repository: ${error.message}`);
@@ -36,24 +66,40 @@ export async function createGitHubRepo(repoName: string, description: string): P
 
 /**
  * Upload a file to a GitHub repository
- * @param repoName - Repository name
- * @param filePath - Path where the file should be stored in the repo
- * @param content - File content (base64 encoded for binary files)
- * @param commitMessage - Commit message
  */
 export async function uploadFileToGitHub(
+    owner: string,
     repoName: string,
     filePath: string,
     content: string,
-    commitMessage: string = 'Add file'
+    commitMessage: string = 'Add file',
+    tokenOverride?: string
 ): Promise<string> {
     try {
-        const { data } = await octokit.repos.createOrUpdateFileContents({
-            owner: GITHUB_OWNER,
+        const client = getClient(tokenOverride);
+
+        // Check if file exists to get SHA
+        let sha: string | undefined;
+        try {
+            const { data } = await client.repos.getContent({
+                owner: owner,
+                repo: repoName,
+                path: filePath,
+            });
+            if (!Array.isArray(data) && 'sha' in data) {
+                sha = data.sha;
+            }
+        } catch (e) {
+            // File doesn't exist, ignore error
+        }
+
+        const { data } = await client.repos.createOrUpdateFileContents({
+            owner: owner,
             repo: repoName,
             path: filePath,
             message: commitMessage,
-            content: content, // Must be base64 encoded
+            content: content,
+            sha: sha, // Include SHA if updating
         });
 
         console.log('File uploaded to GitHub:', data.content?.html_url);
@@ -73,7 +119,7 @@ export function fileToBase64(file: File): Promise<string> {
         reader.readAsDataURL(file);
         reader.onload = () => {
             const result = reader.result as string;
-            // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+            // Remove the data URL prefix
             const base64 = result.split(',')[1];
             resolve(base64);
         };
@@ -87,15 +133,21 @@ export function fileToBase64(file: File): Promise<string> {
 export async function uploadMVPFilesToGitHub(
     userUid: string,
     ideaTitle: string,
-    files: File[]
+    files: File[],
+    tokenOverride?: string
 ): Promise<{ repoUrl: string; fileUrls: string[] }> {
     try {
-        // Create repo with user UID as name
+        // 1. Get authenticated user login (owner)
+        const owner = await getAuthenticatedUser(tokenOverride);
+        console.log('Authenticated as GitHub user:', owner);
+
+        // 2. Create repo with user UID as name
         const repoName = userUid;
         const description = `MVP files for: ${ideaTitle}`;
-        const repoUrl = await createGitHubRepo(repoName, description);
 
-        // Upload each file
+        const repoUrl = await createGitHubRepo(repoName, description, owner, tokenOverride);
+
+        // 3. Upload each file
         const fileUrls: string[] = [];
         for (const file of files) {
             const base64Content = await fileToBase64(file);
@@ -103,10 +155,12 @@ export async function uploadMVPFilesToGitHub(
             const commitMessage = `Add MVP file: ${file.name}`;
 
             const fileUrl = await uploadFileToGitHub(
+                owner,
                 repoName,
                 filePath,
                 base64Content,
-                commitMessage
+                commitMessage,
+                tokenOverride
             );
             fileUrls.push(fileUrl);
         }
