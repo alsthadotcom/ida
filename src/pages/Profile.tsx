@@ -57,6 +57,15 @@ interface UserProfile {
     created_at: string;
 }
 
+interface Activity {
+    id: string;
+    type: "submitted" | "purchased" | "liked" | "viewed";
+    title: string;
+    timestamp: string;
+    icon: any;
+    color: string;
+}
+
 interface UserStats {
     ideasSubmitted: number;
     ideasPurchased: number;
@@ -75,15 +84,6 @@ interface Idea {
     likes: number;
     created_at: string;
     image_url: string;
-}
-
-interface Activity {
-    id: string;
-    type: "submitted" | "purchased" | "liked" | "viewed";
-    title: string;
-    timestamp: string;
-    icon: any;
-    color: string;
 }
 
 const Profile = () => {
@@ -934,6 +934,9 @@ const Profile = () => {
                     {/* Settings Tab */}
                     <TabsContent value="settings" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Developer Settings */}
+
+
                             {/* Notification Settings */}
                             <Card>
                                 <CardHeader>

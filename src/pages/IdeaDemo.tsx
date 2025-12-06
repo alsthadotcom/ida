@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Play, FileText, Map, Lock, ChevronRight, ChevronLeft } from "lucide-react";
+import { ArrowLeft, Play, FileText, Map, Lock, ChevronRight, ChevronLeft, Github } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -73,8 +73,21 @@ const IdeaDemo = () => {
                     >
                         <h1 className="text-3xl md:text-4xl font-outfit font-bold mb-4">{idea.title}</h1>
                         <p className="text-muted-foreground max-w-2xl mx-auto mb-4">{idea.description}</p>
-                        <div className="text-sm text-muted-foreground">
-                            Created by <span className="font-medium text-foreground">{idea.seller}</span>
+                        <div className="flex items-center justify-center gap-4 mt-4">
+                            <div className="text-sm text-muted-foreground">
+                                Created by <span className="font-medium text-foreground">{idea.seller}</span>
+                            </div>
+                            {idea.github_repo_url && (
+                                <a
+                                    href={idea.github_repo_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 hover:bg-muted text-xs font-medium transition-colors border border-border/50"
+                                >
+                                    <Github className="w-3 h-3" />
+                                    View Repository
+                                </a>
+                            )}
                         </div>
                     </motion.div>
 
