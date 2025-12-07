@@ -87,7 +87,7 @@ interface Idea {
 }
 
 const Profile = () => {
-    const { user, signOut } = useAuth();
+    const { user, signOut, isAdmin } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
     const [isEditing, setIsEditing] = useState(false);

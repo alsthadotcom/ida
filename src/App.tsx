@@ -2,13 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminRoute from "@/components/auth/AdminRoute";
 
 // Lazy load pages
 const Index = lazy(() => import("./pages/Index"));
@@ -29,11 +30,22 @@ const BuyIdea = lazy(() => import("./pages/BuyIdea"));
 const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
 const Profile = lazy(() => import("./pages/Profile"));
 const EnvTest = lazy(() => import("./pages/EnvTest"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 
 const queryClient = new QueryClient();
 
 const ScrollToTopWrapper = () => {
   useScrollToTop();
+  return null;
+};
+
+const AdminRedirect = () => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (!loading && user?.email === 'idamarketplace@gmail.com' && !location.pathname.startsWith('/admin')) {
+    return <Navigate to="/admin" replace />;
+  }
   return null;
 };
 
@@ -47,6 +59,7 @@ const App = () => (
           <BrowserRouter>
             <CustomCursor />
             <ScrollToTopWrapper />
+            <AdminRedirect />
             <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -81,6 +94,14 @@ const App = () => (
                 <Route path="/buy/:slug" element={<BuyIdea />} />
                 <Route path="/demo/:slug" element={<IdeaDemo />} />
                 <Route path="/env-test" element={<EnvTest />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
                 {/* Catch all route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

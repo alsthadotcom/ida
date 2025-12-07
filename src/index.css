@@ -138,6 +138,8 @@ body {
   width: 20px;
   height: 20px;
   background: hsl(262 83% 68%);
+  border: 2px solid white;
+  /* Added for contrast */
   border-radius: 50%;
   position: fixed;
   top: -10px;

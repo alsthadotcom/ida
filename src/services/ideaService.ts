@@ -337,3 +337,120 @@ export async function recordPurchase(ideaId: string, ideaTitle: string, price: n
         throw error;
     }
 }
+
+// --- Admin Functions ---
+
+export async function fetchAllIdeasAdmin() {
+    try {
+        const { data, error } = await supabase
+            .from('ideas')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error("Error fetching all ideas (admin):", error);
+        return [];
+    }
+}
+
+export async function deleteIdeaAdmin(id: string) {
+    try {
+        // Fetch idea first to get file URLs and user ID (repo name)
+        const { data: idea, error: fetchError } = await supabase
+            .from('ideas')
+            .select('user_id, mvp_file_urls')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) {
+            console.error("Error fetching idea for deletion details:", fetchError);
+            // Proceed to DB delete anyway to ensure cleanup
+        }
+
+        // 1. Delete associated files from Storage (Supabase)
+        try {
+            const { data: files, error: listError } = await supabase
+                .storage
+                .from('idea-evidence')
+                .list(`${id}/`);
+
+            if (!listError && files && files.length > 0) {
+                const filesToRemove = files.map(file => `${id}/${file.name}`);
+                await supabase.storage.from('idea-evidence').remove(filesToRemove);
+            }
+        } catch (storageError) {
+            console.error("Warning: Supra Storage cleanup failed, continuing...", storageError);
+        }
+
+        // 2. Delete from GitHub (Best Effort - Non-blocking)
+        if (idea && idea.mvp_file_urls && idea.user_id) {
+            try {
+                const { data: settings } = await supabase
+                    .from('platform_settings')
+                    .select('value')
+                    .eq('key', 'github_token')
+                    .single();
+
+                const token = settings?.value;
+
+                if (token) {
+                    // Lazy load service to avoid circular dependency
+                    const { deleteFileFromGitHub, getAuthenticatedUser } = await import('./githubService');
+
+                    try {
+                        const owner = await getAuthenticatedUser(token);
+                        const repoName = idea.user_id; // Repo name is user ID
+                        const fileUrls = idea.mvp_file_urls.split(',').filter((u: string) => u);
+
+                        for (const url of fileUrls) {
+                            try {
+                                // Extract filename from URL (GitHub raw/blob URL structure assumed)
+                                const parts = url.split('/');
+                                const filename = decodeURIComponent(parts[parts.length - 1]);
+                                const path = `mvp-files/${filename}`;
+
+                                await deleteFileFromGitHub(owner, repoName, path, 'Deleted via Admin Panel', token);
+                            } catch (singleFileError) {
+                                console.warn(`Failed to delete specific file from GitHub: ${url}`, singleFileError);
+                                // Continue to next file
+                            }
+                        }
+                    } catch (userError) {
+                        console.warn("Could not authenticate for GitHub deletion or repo not found.", userError);
+                    }
+                }
+            } catch (ghError) {
+                console.error("Warning: GitHub cleanup failed completely, continuing...", ghError);
+            }
+        }
+
+        // 3. Delete from Database
+        const { error, count } = await supabase
+            .from('ideas')
+            .delete({ count: 'exact' })
+            .eq('id', id);
+
+        if (error) throw error;
+        if (count === 0) throw new Error("Idea not found or permission denied (RLS)");
+
+    } catch (error) {
+        console.error("Error deleting idea (admin):", error);
+        throw error;
+    }
+}
+
+export async function toggleIdeaFeatured(id: string, isFeatured: boolean) {
+    try {
+        const { error } = await supabase
+            .from('ideas')
+            .update({ status: isFeatured ? 'featured' : 'approved' })
+            .eq('id', id);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error("Error toggling feature status:", error);
+        throw error;
+    }
+}

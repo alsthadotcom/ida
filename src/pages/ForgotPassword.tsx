@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -16,17 +17,28 @@ const ForgotPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Simulate sending reset email
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setSent(true);
-    toast({
-      title: "Reset link sent!",
-      description: "Check your email for password reset instructions.",
-    });
-    
-    setLoading(false);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`, // Need a page to handle the update
+      });
+
+      if (error) throw error;
+
+      setSent(true);
+      toast({
+        title: "Reset link sent!",
+        description: "Check your email for password reset instructions.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset link",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,7 +62,7 @@ const ForgotPassword = () => {
           Reset your password
         </h1>
         <p className="text-muted-foreground mb-8">
-          {sent 
+          {sent
             ? "We've sent you an email with reset instructions."
             : "Enter your email and we'll send you a reset link."
           }
@@ -90,8 +102,8 @@ const ForgotPassword = () => {
         )}
 
         {/* Back to Login */}
-        <Link 
-          to="/login" 
+        <Link
+          to="/login"
           className="mt-8 flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

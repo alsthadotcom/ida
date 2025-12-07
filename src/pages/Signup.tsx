@@ -20,6 +20,8 @@ const Signup = () => {
     setLoading(true);
 
     try {
+
+
       const { error } = await supabase.auth.signUp({
         email,
         password,

@@ -19,6 +19,8 @@ const Login = () => {
     setLoading(true);
 
     try {
+
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
