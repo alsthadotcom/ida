@@ -59,12 +59,12 @@ const BuyIdea = () => {
 
     const handlePurchase = async () => {
         try {
-            await recordPurchase(idea.id, idea.title, total);
+            await recordPurchase(idea.id, idea.title, total, idea.user_id);
             toast({
-                title: "Purchase Successful!",
-                description: "You now own this idea. Check your email for access details.",
+                title: "Purchase Request Sent!",
+                description: "Your purchase is pending admin approval. You will be notified once approved.",
             });
-            setTimeout(() => navigate("/marketplace"), 2000);
+            setTimeout(() => navigate("/profile"), 2000);
         } catch (error) {
             console.error("Purchase failed", error);
             toast({

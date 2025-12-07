@@ -16,8 +16,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 // Services
-import { fetchPlatformStats, fetchAllUsers, fetchAllTransactions, deleteUserFromDB, banUser, updateIdeaStatus } from "@/services/adminService";
-import { deleteIdeaAdmin, toggleIdeaFeatured, fetchAllIdeasAdmin } from "@/services/ideaService";
+import { fetchPlatformStats, fetchAllUsers, deleteUserFromDB, banUser, updateIdeaStatus } from "@/services/adminService";
+import { deleteIdeaAdmin, toggleIdeaFeatured, fetchAllIdeasAdmin, fetchTransactionsAdmin, updateTransactionStatus } from "@/services/ideaService";
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState({ usersCount: 0, ideasCount: 0, purchasesCount: 0, revenue: 0 });
@@ -427,14 +427,38 @@ const UsersManager = () => {
 
 const TransactionsManager = () => {
     const [transactions, setTransactions] = useState<any[]>([]);
+    const { toast } = useToast();
+
+    const loadTransactions = async () => {
+        const data = await fetchTransactionsAdmin();
+        setTransactions(data);
+    };
 
     useEffect(() => {
-        fetchAllTransactions().then(setTransactions);
+        loadTransactions();
     }, []);
+
+    const handleStatus = async (id: string, status: 'approved' | 'rejected') => {
+        try {
+            await updateTransactionStatus(id, status);
+            toast({
+                title: `Transaction ${status}`,
+                className: status === 'approved' ? "bg-green-600 text-white" : "bg-orange-600 text-white"
+            });
+            loadTransactions();
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Update failed", variant: "destructive" });
+        }
+    };
 
     return (
         <div className="space-y-6">
-            <h3 className="text-xl font-bold">Transaction History</h3>
+            <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold">Transaction History</h3>
+                <Button variant="outline" size="sm" onClick={loadTransactions}><Activity className="w-4 h-4 mr-2" /> Refresh</Button>
+            </div>
+
             <div className="rounded-lg border border-border/50 overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/50">
@@ -442,22 +466,64 @@ const TransactionsManager = () => {
                             <TableHead>Buyer</TableHead>
                             <TableHead>Idea / Item</TableHead>
                             <TableHead>Date</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {transactions.map((t) => (
-                            <TableRow key={t.id}>
-                                <TableCell>
-                                    <div className="font-medium">{t.profiles?.email || 'Unknown Buyer'}</div>
-                                </TableCell>
-                                <TableCell>{t.idea_title || t.description}</TableCell>
-                                <TableCell>{new Date(t.created_at).toLocaleDateString()}</TableCell>
-                                <TableCell className="text-right font-mono">$0.00</TableCell>
-                            </TableRow>
-                        ))}
+                        <AnimatePresence>
+                            {transactions.map((t) => (
+                                <motion.tr
+                                    key={t.id}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="border-b transition-colors hover:bg-muted/50"
+                                >
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{t.profiles?.email || 'Unknown User'}</span>
+                                            <span className="text-xs text-muted-foreground">{t.buyer_id}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{t.ideas?.title || t.idea_Title || 'Unknown Idea'}</div>
+                                    </TableCell>
+                                    <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="font-mono font-medium">${Number(t.amount).toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={
+                                            t.status === 'approved' ? 'default' :
+                                                t.status === 'rejected' ? 'destructive' : 'outline'
+                                        }
+                                            className={
+                                                t.status === 'approved' ? 'bg-green-500 hover:bg-green-600' :
+                                                    t.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : ''
+                                            }
+                                        >
+                                            {t.status.toUpperCase()}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {t.status === 'pending' && (
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8"
+                                                    onClick={() => handleStatus(t.id, 'approved')}>
+                                                    <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="text-orange-500 hover:text-orange-600 hover:bg-orange-500/10 h-8"
+                                                    onClick={() => handleStatus(t.id, 'rejected')}>
+                                                    <XCircle className="w-4 h-4 mr-1" /> Reject
+                                                </Button>
+                                            </div>
+                                        )}
+                                        {t.status !== 'pending' && <span className="text-xs text-muted-foreground">-</span>}
+                                    </TableCell>
+                                </motion.tr>
+                            ))}
+                        </AnimatePresence>
                         {transactions.length === 0 && (
-                            <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No transactions recorded yet.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No transactions recorded yet.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>

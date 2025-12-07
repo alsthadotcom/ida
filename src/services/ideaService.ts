@@ -12,6 +12,27 @@ function generateSlug(title: string): string {
     return `${baseSlug}-${timestamp}`;
 }
 
+// Fetch GitHub token from platform settings
+export async function getGitHubToken(): Promise<string | null> {
+    try {
+        const { data, error } = await supabase
+            .from('platform_settings')
+            .select('value')
+            .eq('key', 'github_token')
+            .single();
+
+        if (error) {
+            console.error('Error fetching GitHub token:', error);
+            return null;
+        }
+
+        return data?.value || null;
+    } catch (error) {
+        console.error('Error in getGitHubToken:', error);
+        return null;
+    }
+}
+
 // Upload evidence files to Supabase Storage
 export async function uploadEvidenceFiles(files: File[], ideaId: string): Promise<string[]> {
     const uploadPromises = files.map(async (file, index) => {
@@ -310,28 +331,28 @@ export async function updateIdea(id: string, ideaData: any): Promise<void> {
     }
 }
 
-// Record a purchase
-export async function recordPurchase(ideaId: string, ideaTitle: string, price: number): Promise<void> {
+// Record a purchase (create pending transaction)
+export async function recordPurchase(ideaId: string, ideaTitle: string, price: number, sellerId?: string): Promise<void> {
     try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated');
 
-        // Create activity record for the buyer
+        // Create pending transaction
         const { error } = await supabase
-            .from('user_activities')
+            .from('transactions')
             .insert({
-                user_id: user.id,
-                activity_type: 'purchased',
-                description: `Purchased idea: ${ideaTitle}`,
-                idea_title: ideaTitle,
-                created_at: new Date().toISOString()
+                buyer_id: user.id,
+                seller_id: sellerId || null, // Best effort if passed, else null
+                idea_id: ideaId,
+                amount: price,
+                status: 'pending'
             });
 
         if (error) {
-            console.error('Error recording purchase activity:', error);
-            // Don't throw here to avoid blocking visual success if DB fails partially
+            console.error('Error recording transaction:', error);
             throw error;
         }
+
     } catch (error) {
         console.error('Error in recordPurchase:', error);
         throw error;
@@ -451,6 +472,61 @@ export async function toggleIdeaFeatured(id: string, isFeatured: boolean) {
         if (error) throw error;
     } catch (error) {
         console.error("Error toggling feature status:", error);
+        throw error;
+    }
+}
+
+// Admin: Fetch all transactions
+export async function fetchTransactionsAdmin() {
+    try {
+        const { data, error } = await supabase
+            .from('transactions')
+            .select(`
+                *,
+                profiles:buyer_id (email),
+                ideas:idea_id (title)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error("Error fetching transactions:", error);
+        return [];
+    }
+}
+
+// Admin: Update transaction status
+export async function updateTransactionStatus(transactionId: string, status: 'approved' | 'rejected') {
+    try {
+        const { data, error } = await supabase
+            .from('transactions')
+            .update({ status })
+            .eq('id', transactionId)
+            .select() // Returning * so we can get details for side effects
+            .single();
+
+        if (error) throw error;
+
+        // If approved, strictly now we consider it "Purchased".
+        // We might want to create the 'user_activity' record here for the buyer so it shows up in their feed/stats?
+        if (status === 'approved' && data) {
+            // Fetch idea title if not present (though we can join, but here we just need title for activity desc)
+            const { data: idea } = await supabase.from('ideas').select('title').eq('id', data.idea_id).single();
+            const title = idea?.title || 'Idea';
+
+            await supabase.from('user_activities').insert({
+                user_id: data.buyer_id,
+                activity_type: 'purchased',
+                description: `Purchased idea: ${title}`,
+                idea_title: title,
+                created_at: new Date().toISOString()
+            });
+        }
+
+        return data;
+    } catch (error) {
+        console.error("Error updating transaction status:", error);
         throw error;
     }
 }

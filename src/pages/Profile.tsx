@@ -27,6 +27,13 @@ import {
     XCircle,
     AlertCircle,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,13 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
+import { getGitHubToken } from "@/services/ideaService";
 
 interface UserProfile {
     id: string;
@@ -84,6 +85,7 @@ interface Idea {
     likes: number;
     created_at: string;
     image_url: string;
+    mvp_file_urls?: string;
 }
 
 const Profile = () => {
@@ -289,57 +291,52 @@ const Profile = () => {
 
     const loadPurchasedIdeas = async () => {
         try {
-            // 1. Get 'purchased' activities
-            const { data: activitiesData, error: activitiesError } = await supabase
-                .from("user_activities")
-                .select("description, idea_title, created_at") // We might need to store actual idea_id in activity for robust linking, but for now rely on text or if we assumed we stored it. 
-                // Wait, I implemented recordPurchase to store idea_title separately. 
-                // Ideally I should have stored idea_id. 
-                // Let's check recordPurchase implementation... I didn't add idea_id column to insert.
-                // Uh oh. retrieving purchased ideas by title is flaky if titles change. 
-                // But wait, I can probably fix ideaService to store idea_id in a metadata field or assume column exists?
-                // The prompt didn't strictly say Add Column.
-                // Let's assume for this MVP we can't easily join.
-                // ALTERNATIVE: recordPurchase creates a 'purchases' table? OR we just show the activity log?
-                // The task says "if i buy an idea update it and show the purchased ideas".
-                // Let's try to match by title if possible, or just list them from activity description if we can't fetch full idea object.
-                // Better: Let's assume I can store idea_id in a JSONB 'metadata' column if it exists, or just use description.
-                // OK, looking at Profile.tsx, it expects `Idea[]`.
-                // If I can't get Idea ID, I can't fetch Idea details (image, etc).
-                // Let's check `user_activities` schema? I don't have it.
-                // SAFEST BET: modify `recordPurchase` to store `idea_id` maybe in a `related_id` column if it exists?
-                // I'll stick to what I have: I will try to fetch ideas where title matches those in activities.
-                .eq("user_id", user?.id)
-                .eq("activity_type", "purchased");
+            // Fetch from transactions table where buyer is current user
+            const { data: transactions, error } = await supabase
+                .from("transactions")
+                .select(`
+                    id,
+                    status,
+                    created_at,
+                    ideas (
+                        id,
+                        title,
+                        category,
+                        price,
+                        views,
+                        likes,
+                        created_at,
+                        mvp_file_urls
+                    )
+                `)
+                .eq("buyer_id", user?.id)
+                .order('created_at', { ascending: false });
 
-            if (activitiesError) {
-                console.error("Error loading purchased activities:", activitiesError);
+            if (error) {
+                console.error("Error loading transactions:", error);
                 return;
             }
 
-            if (activitiesData && activitiesData.length > 0) {
-                const titles = activitiesData.map(a => a.idea_title);
+            if (transactions && transactions.length > 0) {
+                const ideas = transactions.map((t: any) => {
+                    const idea = t.ideas;
+                    if (!idea) return null; // Should not happen if relation exists
 
-                // Fetch ideas by titles
-                const { data: ideasData, error: ideasError } = await supabase
-                    .from("ideas")
-                    .select("*")
-                    .in("title", titles);
-
-                if (ideasData) {
-                    const ideas: Idea[] = ideasData.map((idea) => ({
+                    return {
                         id: idea.id,
                         title: idea.title,
                         category: idea.category,
-                        price: idea.price,
-                        status: "purchased",
+                        price: idea.price, // This is string "$99" usually? type says number. Let's keep existing logic or cast.
+                        status: t.status, // use transaction status ('pending', 'approved', 'rejected')
                         views: idea.views || 0,
                         likes: idea.likes || 0,
                         created_at: idea.created_at,
-                        image_url: idea.image_url || "",
-                    }));
-                    setPurchasedIdeas(ideas);
-                }
+                        image_url: idea.mvp_file_urls ? idea.mvp_file_urls.split(',')[0] : "",
+                        mvp_file_urls: idea.mvp_file_urls || "",
+                    };
+                }).filter(Boolean) as Idea[];
+
+                setPurchasedIdeas(ideas);
             }
         } catch (error) {
             console.error("Error loading purchased ideas", error);
@@ -978,9 +975,9 @@ const Profile = () => {
                     <TabsContent value="purchased" className="space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Purchased Ideas</CardTitle>
+                                <CardTitle>Order History</CardTitle>
                                 <CardDescription>
-                                    Ideas you've purchased from the marketplace
+                                    Track your purchases and approval status
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -1004,15 +1001,132 @@ const Profile = () => {
                                                 )}
                                                 <div className="flex items-start justify-between mb-2">
                                                     <h3 className="font-semibold line-clamp-2">{idea.title}</h3>
-                                                    <Badge className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1">
-                                                        <ShoppingBag className="w-3 h-3" /> Purchased
-                                                    </Badge>
+                                                    {idea.status === 'pending' ? (
+                                                        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" /> Pending
+                                                        </Badge>
+                                                    ) : idea.status === 'rejected' ? (
+                                                        <Badge variant="destructive" className="flex items-center gap-1">
+                                                            <XCircle className="w-3 h-3" /> Rejected
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1">
+                                                            <ShoppingBag className="w-3 h-3" /> Purchased
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mb-3">{idea.category}</p>
                                                 <div className="flex items-center justify-between text-sm">
                                                     <span className="font-bold text-primary">${idea.price}</span>
-                                                    <Button size="sm" variant="default" className="text-xs h-8" onClick={() => toast({ title: "Accessing content...", description: "Check your email for access links." })}>
-                                                        Access
+                                                    <Button
+                                                        size="sm"
+                                                        variant={idea.status === 'approved' ? 'default' : 'secondary'}
+                                                        className="text-xs h-8"
+                                                        disabled={idea.status !== 'approved'}
+                                                        onClick={async () => {
+                                                            if (!idea.mvp_file_urls) {
+                                                                toast({
+                                                                    title: "No files available",
+                                                                    description: "The seller hasn't uploaded any MVP files for this idea.",
+                                                                    variant: "destructive"
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            const urls = idea.mvp_file_urls.split(',').filter(u => u.trim());
+
+                                                            if (urls.length === 0) {
+                                                                toast({
+                                                                    title: "No valid files",
+                                                                    description: "No valid file links found.",
+                                                                    variant: "destructive"
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            let successCount = 0;
+                                                            let failCount = 0;
+
+                                                            // Fetch GitHub token
+                                                            const token = await getGitHubToken();
+                                                            console.log("Download debug - Token:", token ? `Found (Length: ${token.length})` : "Missing");
+
+                                                            if (token === 'REPLACE_WITH_YOUR_REAL_GITHUB_TOKEN') {
+                                                                toast({
+                                                                    title: "Configuration Error",
+                                                                    description: "GitHub token not configured in Supabase platform_settings.",
+                                                                    variant: "destructive"
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            for (const url of urls) {
+                                                                const cleanUrl = url.trim();
+                                                                let fetchUrl = cleanUrl;
+                                                                const headers: HeadersInit = {};
+
+                                                                // Convert GitHub blob URLs to API URLs to handle CORS
+                                                                // Regex to extract owner, repo, branch, and path
+                                                                const githubRegex = /github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/;
+                                                                const match = cleanUrl.match(githubRegex);
+
+                                                                if (match) {
+                                                                    const [_, owner, repo, branch, path] = match;
+                                                                    fetchUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+                                                                    headers['Accept'] = 'application/vnd.github.v3.raw';
+                                                                }
+
+                                                                // Add token for auth
+                                                                if (token && (fetchUrl.includes('github') || fetchUrl.includes('api.github.com'))) {
+                                                                    headers['Authorization'] = `Bearer ${token}`;
+                                                                }
+
+                                                                console.log(`Download debug - Processing: ${cleanUrl} -> ${fetchUrl}`);
+
+                                                                try {
+                                                                    const response = await fetch(fetchUrl, { headers });
+                                                                    console.log(`Download debug - Fetch status: ${response.status}`);
+
+                                                                    if (!response.ok) {
+                                                                        const errorText = await response.text().catch(() => "No error details");
+                                                                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                                                                    }
+
+                                                                    const blob = await response.blob();
+                                                                    const downloadUrl = window.URL.createObjectURL(blob);
+                                                                    const a = document.createElement('a');
+                                                                    a.href = downloadUrl;
+                                                                    // Extract filename
+                                                                    const fileName = cleanUrl.split('/').pop()?.split('?')[0] || `file-${Date.now()}`;
+                                                                    a.download = fileName;
+                                                                    document.body.appendChild(a);
+                                                                    a.click();
+                                                                    window.URL.revokeObjectURL(downloadUrl);
+                                                                    document.body.removeChild(a);
+                                                                    successCount++;
+                                                                } catch (err) {
+                                                                    console.error("Download failed details:", err);
+                                                                    failCount++;
+                                                                }
+                                                            }
+
+                                                            if (successCount > 0) {
+                                                                toast({
+                                                                    title: "Download Complete",
+                                                                    description: `Successfully downloaded ${successCount} file(s).`
+                                                                });
+                                                            }
+
+                                                            if (failCount > 0) {
+                                                                toast({
+                                                                    title: "Download Issues",
+                                                                    description: `Failed to download ${failCount} file(s). Check repository permissions.`,
+                                                                    variant: "destructive"
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {idea.status === 'approved' ? 'Download Files' : 'Locked'}
                                                     </Button>
                                                 </div>
                                                 <div className="mt-3 text-xs text-muted-foreground">
