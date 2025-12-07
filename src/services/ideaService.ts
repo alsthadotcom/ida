@@ -255,3 +255,85 @@ export async function fetchPlatformStats(): Promise<{
         };
     }
 }
+
+// Update an existing idea
+export async function updateIdea(id: string, ideaData: any): Promise<void> {
+    try {
+        const updatePayload: any = {
+            title: ideaData.title,
+            description: ideaData.description,
+            price: ideaData.price.toString().startsWith('$') ? ideaData.price : `$${ideaData.price}`,
+            category: ideaData.category,
+            // Scores
+            uniqueness: ideaData.uniqueness,
+            execution_readiness: ideaData.executionReadiness,
+            clarity_score: ideaData.clarityScore,
+            rating: Number(((ideaData.uniqueness + ideaData.clarityScore) / 2 / 20).toFixed(1)),
+            // Flags
+            has_mvp: ideaData.hasMVP,
+            is_raw_idea: ideaData.isRawIdea,
+            has_detailed_roadmap: ideaData.hasDetailedRoadmap,
+            investment_ready: ideaData.investmentReady,
+            looking_for_partner: ideaData.lookingForPartner,
+            // Details
+            target_audience: ideaData.targetAudience,
+            region_feasibility: ideaData.regionFeasibility,
+            market_potential: ideaData.marketPotential,
+            type_of_topic: ideaData.typeOfTopic,
+            // Evidence
+            evidence_note: ideaData.evidenceNote,
+            updated_at: new Date().toISOString(),
+        };
+
+        // Only update file URLs if they are provided/changed
+        if (ideaData.mvpFileUrls !== undefined) {
+            updatePayload.mvp_file_urls = ideaData.mvpFileUrls || "";
+        }
+
+        // Only update repo URL if provided (usually shouldn't change, but good to have option)
+        if (ideaData.githubRepoUrl) {
+            updatePayload.github_repo_url = ideaData.githubRepoUrl;
+        }
+
+        const { error } = await supabase
+            .from('ideas')
+            .update(updatePayload)
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error updating idea:', error);
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error in updateIdea:', error);
+        throw error;
+    }
+}
+
+// Record a purchase
+export async function recordPurchase(ideaId: string, ideaTitle: string, price: number): Promise<void> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        // Create activity record for the buyer
+        const { error } = await supabase
+            .from('user_activities')
+            .insert({
+                user_id: user.id,
+                activity_type: 'purchased',
+                description: `Purchased idea: ${ideaTitle}`,
+                idea_title: ideaTitle,
+                created_at: new Date().toISOString()
+            });
+
+        if (error) {
+            console.error('Error recording purchase activity:', error);
+            // Don't throw here to avoid blocking visual success if DB fails partially
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error in recordPurchase:', error);
+        throw error;
+    }
+}

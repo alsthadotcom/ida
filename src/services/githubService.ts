@@ -171,3 +171,50 @@ export async function uploadMVPFilesToGitHub(
         throw error;
     }
 }
+
+/**
+ * Delete a file from GitHub repository
+ */
+export async function deleteFileFromGitHub(
+    owner: string,
+    repoName: string,
+    filePath: string,
+    message: string = 'Delete file via Idea Canvas',
+    tokenOverride?: string
+): Promise<void> {
+    try {
+        const client = getClient(tokenOverride);
+
+        // 1. Get the file's SHA
+        let sha: string;
+        try {
+            const { data } = await client.repos.getContent({
+                owner,
+                repo: repoName,
+                path: filePath,
+            });
+
+            if (Array.isArray(data) || !('sha' in data)) {
+                throw new Error('Path is a directory or invalid');
+            }
+            sha = data.sha;
+        } catch (e: any) {
+            console.error('File not found for deletion:', e);
+            return; // File probably already deleted or doesn't exist
+        }
+
+        // 2. Delete the file
+        await client.repos.deleteFile({
+            owner,
+            repo: repoName,
+            path: filePath,
+            message,
+            sha,
+        });
+
+        console.log(`File deleted from GitHub: ${filePath}`);
+    } catch (error: any) {
+        console.error('Error deleting file from GitHub:', error);
+        throw new Error(`Failed to delete file: ${error.message}`);
+    }
+}

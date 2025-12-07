@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
-import { fetchIdeaBySlug } from "@/services/ideaService";
+import { fetchIdeaBySlug, recordPurchase } from "@/services/ideaService";
 
 const BuyIdea = () => {
     const { slug } = useParams();
@@ -48,12 +48,22 @@ const BuyIdea = () => {
     const platformFee = price * 0.13;
     const total = price + platformFee;
 
-    const handlePurchase = () => {
-        toast({
-            title: "Purchase Successful!",
-            description: "You now own this idea. Check your email for access details.",
-        });
-        setTimeout(() => navigate("/marketplace"), 2000);
+    const handlePurchase = async () => {
+        try {
+            await recordPurchase(idea.id, idea.title, total);
+            toast({
+                title: "Purchase Successful!",
+                description: "You now own this idea. Check your email for access details.",
+            });
+            setTimeout(() => navigate("/marketplace"), 2000);
+        } catch (error) {
+            console.error("Purchase failed", error);
+            toast({
+                title: "Purchase Failed",
+                description: "There was an error processing your purchase. Please try again.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (
