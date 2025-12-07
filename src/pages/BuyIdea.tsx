@@ -1,15 +1,20 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, CreditCard, Check, Lock } from "lucide-react";
+import { ArrowLeft, Shield, CreditCard, Check, Lock, MessageCircle } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import { fetchIdeaBySlug, recordPurchase } from "@/services/ideaService";
+import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
+import ChatWindow from "@/components/chat/ChatWindow";
+import { toast as sonnerToast } from "sonner";
 
 const BuyIdea = () => {
     const { slug } = useParams();
@@ -17,6 +22,10 @@ const BuyIdea = () => {
     const { toast } = useToast();
     const [idea, setIdea] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [conversationId, setConversationId] = useState<string | null>(null);
+    const { getOrCreateConversation } = useChat();
+    const { user } = useAuth();
 
     useEffect(() => {
         const loadIdea = async () => {
@@ -63,6 +72,32 @@ const BuyIdea = () => {
                 description: "There was an error processing your purchase. Please try again.",
                 variant: "destructive"
             });
+        }
+    };
+
+    const handleMessageSeller = async () => {
+        if (!user) {
+            sonnerToast.error("Please log in to message the seller");
+            navigate('/login');
+            return;
+        }
+
+        if (user.id === idea.user_id) {
+            sonnerToast.error("You cannot message yourself");
+            return;
+        }
+
+        // Open chat immediately for instant feedback
+        setChatOpen(true);
+
+        // Create/get conversation in background
+        try {
+            const convoId = await getOrCreateConversation(idea.user_id, idea.profiles?.full_name || 'Seller');
+            setConversationId(convoId);
+        } catch (error) {
+            console.error('Error creating conversation:', error);
+            sonnerToast.error("Failed to create chat");
+            setChatOpen(false);
         }
     };
 
@@ -174,6 +209,16 @@ const BuyIdea = () => {
                                 </div>
 
                                 <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="w-full mb-3"
+                                    onClick={handleMessageSeller}
+                                >
+                                    <MessageCircle className="w-4 h-4 mr-2" />
+                                    Message Seller
+                                </Button>
+
+                                <Button
                                     size="lg"
                                     className="w-full magnetic-btn bg-primary hover:bg-primary/90 glow-purple mb-4"
                                     onClick={handlePurchase}
@@ -201,6 +246,26 @@ const BuyIdea = () => {
                 </div>
             </main>
             <Footer />
+
+            {chatOpen && (
+                conversationId ? (
+                    <ChatWindow
+                        conversationId={conversationId}
+                        recipientName={idea.profiles?.full_name || 'Seller'}
+                        onClose={() => {
+                            setChatOpen(false);
+                            setConversationId(null);
+                        }}
+                    />
+                ) : (
+                    <Card className="fixed bottom-4 right-4 w-96 h-[200px] shadow-2xl border-border/50 bg-card/95 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                            <p className="text-sm text-muted-foreground">Opening chat...</p>
+                        </div>
+                    </Card>
+                )
+            )}
         </div>
     );
 };

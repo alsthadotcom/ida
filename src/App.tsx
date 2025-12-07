@@ -6,10 +6,12 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { lazy, Suspense } from "react";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ChatProvider } from "@/context/ChatContext";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import CustomCursor from "@/components/ui/CustomCursor";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminRoute from "@/components/auth/AdminRoute";
+import FloatingMessageButton from "@/components/chat/FloatingMessageButton";
 
 // Lazy load pages
 const Index = lazy(() => import("./pages/Index"));
@@ -31,6 +33,7 @@ const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
 const Profile = lazy(() => import("./pages/Profile"));
 const EnvTest = lazy(() => import("./pages/EnvTest"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const Messages = lazy(() => import("./pages/Messages"));
 
 const queryClient = new QueryClient();
 
@@ -52,63 +55,74 @@ const AdminRedirect = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <CustomCursor />
-            <ScrollToTopWrapper />
-            <AdminRedirect />
-            <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/marketplace" element={<Marketplace />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route
-                  path="/submit-idea"
-                  element={
-                    <ProtectedRoute>
-                      <SubmitIdea />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/blog" element={<Blog />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/cookies" element={<Cookies />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/buy/:slug" element={<BuyIdea />} />
-                <Route path="/demo/:slug" element={<IdeaDemo />} />
-                <Route path="/env-test" element={<EnvTest />} />
-                <Route
-                  path="/admin"
-                  element={
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  }
-                />
-                {/* Catch all route */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
+      <ChatProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <CustomCursor />
+              <FloatingMessageButton />
+              <ScrollToTopWrapper />
+              <AdminRedirect />
+              <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/marketplace" element={<Marketplace />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route
+                    path="/submit-idea"
+                    element={
+                      <ProtectedRoute>
+                        <SubmitIdea />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/messages"
+                    element={
+                      <ProtectedRoute>
+                        <Messages />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/how-it-works" element={<HowItWorks />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/careers" element={<Careers />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/cookies" element={<Cookies />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/buy/:slug" element={<BuyIdea />} />
+                  <Route path="/demo/:slug" element={<IdeaDemo />} />
+                  <Route path="/env-test" element={<EnvTest />} />
+                  <Route
+                    path="/admin"
+                    element={
+                      <AdminRoute>
+                        <AdminDashboard />
+                      </AdminRoute>
+                    }
+                  />
+                  {/* Catch all route */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
+      </ChatProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
