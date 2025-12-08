@@ -52,7 +52,9 @@ const SubmitIdea = () => {
   const [platformToken, setPlatformToken] = useState("");
   const [searchParams] = useSearchParams();
   const ideaId = searchParams.get("id");
+  const mode = searchParams.get("mode");
   const isEditing = !!ideaId;
+  const isReviewMode = mode === 'review';
   const [existingFiles, setExistingFiles] = useState<Array<{ name: string; url: string }>>([]);
 
 
@@ -84,6 +86,7 @@ const SubmitIdea = () => {
   });
 
   const handleInputChange = (field: string, value: any) => {
+    if (isReviewMode) return; // Prevent changes in review mode
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       if ((field === "hasMVP" && value) || (field === "hasDetailedRoadmap" && value)) {
@@ -135,7 +138,6 @@ const SubmitIdea = () => {
         console.error("Failed to fetch platform token", err);
       }
     };
-    fetchPlatformToken();
     fetchPlatformToken();
   }, []);
 
@@ -201,6 +203,7 @@ const SubmitIdea = () => {
   }, [ideaId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReviewMode) return;
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -268,6 +271,7 @@ const SubmitIdea = () => {
   };
 
   const handleRemoveFile = (index: number) => {
+    if (isReviewMode) return;
     setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
     toast({
       title: "File removed",
@@ -275,7 +279,7 @@ const SubmitIdea = () => {
   };
 
   const handleDeleteExistingFile = async (index: number) => {
-    if (!user || !ideaId) return;
+    if (isReviewMode || !user || !ideaId) return;
     const file = existingFiles[index];
 
     if (confirm(`Are you sure you want to delete ${file.name} from GitHub? This cannot be undone.`)) {
@@ -292,13 +296,6 @@ const SubmitIdea = () => {
         const newFiles = existingFiles.filter((_, i) => i !== index);
         setExistingFiles(newFiles);
 
-        // Also update the idea record immediately to reflect file removal in DB? 
-        // Or wait for save? Implementation plan said "or on save".
-        // Let's rely on Save for DB update, but UI is updated. 
-        // If user leaves without saving, DB still has old link but file is gone from GH... 
-        // Safe way: update DB immediately? Nah, let's keep it simple: removed from UI list, 
-        // if they save, new list overwrites. If they don't save, broken link. User warned.
-
         toast({ title: "File deleted from GitHub" });
       } catch (error: any) {
         console.error("Delete error", error);
@@ -312,6 +309,7 @@ const SubmitIdea = () => {
   };
 
   const handleSubmitIdea = async () => {
+    if (isReviewMode) return;
     try {
       if (!user) {
         toast({
@@ -322,11 +320,7 @@ const SubmitIdea = () => {
         return;
       }
 
-      let githubRepoUrl = formData['githubRepoUrl'] || ''; // Use existing if available (need to fetch it too?)
-      // Actually fetchIdeaById doesn't return repo url in my snippet above, need to make sure we keep it. Use ideaId fetch logic to check if we missed it.
-      // Wait, let's look at fetchIdeaById snippet... it returns select * so it has it.
-      // But I didn't store it in formData. I should check if I need to.
-      // For now, let's assume updateIdea doesn't need repoUrl unless it changed (which it doesn't).
+      let githubRepoUrl = formData['githubRepoUrl'] || '';
 
       let allFileUrls: string[] = existingFiles.map(f => f.url);
 
@@ -340,8 +334,6 @@ const SubmitIdea = () => {
         try {
           const { uploadMVPFilesToGitHub } = await import('@/services/githubService');
 
-          // Note: uploadMVPFilesToGitHub creates repo if not exists. 
-          // If editing, it should just reuse existing repo (createGitHubRepo handles 422).
           const result = await uploadMVPFilesToGitHub(
             user.id,
             formData.title,
@@ -385,7 +377,7 @@ const SubmitIdea = () => {
         lookingForPartner: formData.lookingForPartner,
         typeOfTopic: formData.typeOfTopic,
         evidenceNote: formData.evidenceNote,
-        githubRepoUrl: githubRepoUrl, // Pass if we have it, mostly relevant for new ideas
+        githubRepoUrl: githubRepoUrl,
         mvpFileUrls: allFileUrls.join(','),
       };
 
@@ -425,14 +417,14 @@ const SubmitIdea = () => {
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-            <Link to="/marketplace" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back to Marketplace
+            <Link to={isReviewMode ? "/admin" : "/marketplace"} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Back to {isReviewMode ? "Admin Dashboard" : "Marketplace"}
             </Link>
             <h1 className="text-3xl md:text-4xl font-outfit font-bold text-foreground mb-2">
-              {isEditing ? "Edit Your Idea" : "Submit Your Idea"}
+              {isReviewMode ? "Review Idea" : (isEditing ? "Edit Your Idea" : "Submit Your Idea")}
             </h1>
             <p className="text-muted-foreground">
-              {isEditing ? "Update your idea details and manage files." : "Share your unique business idea and start earning."}
+              {isReviewMode ? "Review idea details and attached files." : (isEditing ? "Update your idea details and manage files." : "Share your unique business idea and start earning.")}
             </p>
           </motion.div>
 
@@ -482,14 +474,14 @@ const SubmitIdea = () => {
                   <Label htmlFor="title" className="text-foreground flex items-center gap-2">
                     <Lightbulb className="w-4 h-4 text-primary" /> Idea Title
                   </Label>
-                  <Input id="title" placeholder="e.g., AI‑Powered Customer Onboarding System" value={formData.title} onChange={(e) => handleInputChange("title", e.target.value)} className="h-12 bg-muted/50 border-border/50" />
+                  <Input id="title" disabled={isReviewMode} placeholder="e.g., AI‑Powered Customer Onboarding System" value={formData.title} onChange={(e) => handleInputChange("title", e.target.value)} className="h-12 bg-muted/50 border-border/50" />
                 </div>
                 {/* Short description */}
                 <div className="space-y-2">
                   <Label htmlFor="shortDescription" className="text-foreground flex items-center gap-2">
                     <FileText className="w-4 h-4 text-primary" /> Short Description
                   </Label>
-                  <Textarea id="shortDescription" placeholder="A brief summary (max 200 chars)" maxLength={200} value={formData.shortDescription} onChange={(e) => handleInputChange("shortDescription", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
+                  <Textarea id="shortDescription" disabled={isReviewMode} placeholder="A brief summary (max 200 chars)" maxLength={200} value={formData.shortDescription} onChange={(e) => handleInputChange("shortDescription", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
                   <p className="text-xs text-muted-foreground text-right">{formData.shortDescription.length}/200</p>
                 </div>
                 {/* Topic Type (Badge) */}
@@ -500,7 +492,7 @@ const SubmitIdea = () => {
                     <Label htmlFor="category" className="text-foreground flex items-center gap-2">
                       <Tag className="w-4 h-4 text-primary" /> Category
                     </Label>
-                    <Select value={formData.category} onValueChange={(v) => handleInputChange("category", v)}>
+                    <Select disabled={isReviewMode} value={formData.category} onValueChange={(v) => handleInputChange("category", v)}>
                       <SelectTrigger className="h-12 bg-muted/50 border-border/50"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>{CATEGORIES.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
                     </Select>
@@ -509,7 +501,7 @@ const SubmitIdea = () => {
                     <Label htmlFor="typeOfTopic" className="text-foreground flex items-center gap-2">
                       <Zap className="w-4 h-4 text-accent" /> Topic Type
                     </Label>
-                    <Select value={formData.typeOfTopic} onValueChange={(v) => handleInputChange("typeOfTopic", v)}>
+                    <Select disabled={isReviewMode} value={formData.typeOfTopic} onValueChange={(v) => handleInputChange("typeOfTopic", v)}>
                       <SelectTrigger className="h-12 bg-muted/50 border-border/50"><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>{TOPIC_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
                     </Select>
@@ -522,17 +514,17 @@ const SubmitIdea = () => {
                 {/* Long description */}
                 <div className="space-y-2">
                   <Label htmlFor="longDescription" className="text-foreground">Full Description</Label>
-                  <Textarea id="longDescription" placeholder="Detailed explanation..." value={formData.longDescription} onChange={(e) => handleInputChange("longDescription", e.target.value)} className="bg-muted/50 border-border/50 min-h-[150px]" />
+                  <Textarea id="longDescription" disabled={isReviewMode} placeholder="Detailed explanation..." value={formData.longDescription} onChange={(e) => handleInputChange("longDescription", e.target.value)} className="bg-muted/50 border-border/50 min-h-[150px]" />
                 </div>
                 {/* Problem & Solution */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="problem" className="text-foreground">Problem</Label>
-                    <Textarea id="problem" placeholder="What problem does this idea solve?" value={formData.problem} onChange={(e) => handleInputChange("problem", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
+                    <Textarea id="problem" disabled={isReviewMode} placeholder="What problem does this idea solve?" value={formData.problem} onChange={(e) => handleInputChange("problem", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="solution" className="text-foreground">Solution</Label>
-                    <Textarea id="solution" placeholder="How does your idea solve this problem?" value={formData.solution} onChange={(e) => handleInputChange("solution", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
+                    <Textarea id="solution" disabled={isReviewMode} placeholder="How does your idea solve this problem?" value={formData.solution} onChange={(e) => handleInputChange("solution", e.target.value)} className="bg-muted/50 border-border/50 min-h-[100px]" />
                   </div>
                 </div>
                 {/* Project status */}
@@ -541,19 +533,19 @@ const SubmitIdea = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
                       <Label htmlFor="hasMVP" className="cursor-pointer">Has MVP?</Label>
-                      <Switch id="hasMVP" checked={formData.hasMVP} onCheckedChange={(c) => handleInputChange("hasMVP", c)} />
+                      <Switch id="hasMVP" disabled={isReviewMode} checked={formData.hasMVP} onCheckedChange={(c) => handleInputChange("hasMVP", c)} />
                     </div>
                     <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
                       <Label htmlFor="hasDetailedRoadmap" className="cursor-pointer">Has Detailed Roadmap?</Label>
-                      <Switch id="hasDetailedRoadmap" checked={formData.hasDetailedRoadmap} onCheckedChange={(c) => handleInputChange("hasDetailedRoadmap", c)} />
+                      <Switch id="hasDetailedRoadmap" disabled={isReviewMode} checked={formData.hasDetailedRoadmap} onCheckedChange={(c) => handleInputChange("hasDetailedRoadmap", c)} />
                     </div>
                     <div className={`flex items-center justify-between p-4 rounded-xl border border-border/50 ${showEvidence ? "bg-muted/10 opacity-50 cursor-not-allowed" : "bg-muted/30"}`}>
                       <Label htmlFor="isRawIdea" className={`cursor-pointer ${showEvidence ? "cursor-not-allowed" : ""}`}>Is Raw Idea?</Label>
-                      <Switch id="isRawIdea" checked={formData.isRawIdea} onCheckedChange={(c) => handleInputChange("isRawIdea", c)} disabled={showEvidence} />
+                      <Switch id="isRawIdea" checked={formData.isRawIdea} disabled={showEvidence || isReviewMode} onCheckedChange={(c) => handleInputChange("isRawIdea", c)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Execution Readiness ({formData.executionReadiness}%)</Label>
-                      <Slider value={[formData.executionReadiness]} onValueChange={(v) => handleInputChange("executionReadiness", v[0])} max={100} step={5} />
+                      <Slider disabled={isReviewMode} value={[formData.executionReadiness]} onValueChange={(v) => handleInputChange("executionReadiness", v[0])} max={100} step={5} />
                     </div>
                   </div>
                 </div>
@@ -562,28 +554,30 @@ const SubmitIdea = () => {
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4 pt-4 border-t border-border/50">
                     <h3 className="font-semibold text-foreground flex items-center gap-2"><File className="w-5 h-5 text-primary" /> Evidence & Documentation</h3>
                     <div className="p-6 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5">
-                      <div className="text-center mb-6">
-                        <Upload className="w-10 h-10 mx-auto text-primary mb-3" />
-                        <p className="text-foreground font-medium">Upload Project Files</p>
-                        <p className="text-muted-foreground text-sm mt-1">DOCX, PDF, PPT, MP4, MP3, TXT (max 50MB)</p>
-                        <input
-                          id="file-upload"
-                          type="file"
-                          multiple
-                          accept=".docx,.pdf,.ppt,.pptx,.mp4,.mp3,.txt,.zip"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                        />
-                        <Button
-                          variant="outline"
-                          className="mt-4"
-                          disabled={uploading}
-                          type="button"
-                          onClick={() => document.getElementById('file-upload')?.click()}
-                        >
-                          {uploading ? "Uploading..." : "Browse Files"}
-                        </Button>
-                      </div>
+                      {!isReviewMode && (
+                        <div className="text-center mb-6">
+                          <Upload className="w-10 h-10 mx-auto text-primary mb-3" />
+                          <p className="text-foreground font-medium">Upload Project Files</p>
+                          <p className="text-muted-foreground text-sm mt-1">DOCX, PDF, PPT, MP4, MP3, TXT (max 50MB)</p>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            multiple
+                            accept=".docx,.pdf,.ppt,.pptx,.mp4,.mp3,.txt,.zip"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                          />
+                          <Button
+                            variant="outline"
+                            className="mt-4"
+                            disabled={uploading}
+                            type="button"
+                            onClick={() => document.getElementById('file-upload')?.click()}
+                          >
+                            {uploading ? "Uploading..." : "Browse Files"}
+                          </Button>
+                        </div>
+                      )}
 
                       {existingFiles.length > 0 && (
                         <div className="mb-6 space-y-2">
@@ -595,15 +589,17 @@ const SubmitIdea = () => {
                                 <span className="text-sm font-medium">{file.name}</span>
                                 <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">View</a>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                type="button"
-                                onClick={() => handleDeleteExistingFile(index)}
-                                className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {!isReviewMode && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  type="button"
+                                  onClick={() => handleDeleteExistingFile(index)}
+                                  className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -621,21 +617,23 @@ const SubmitIdea = () => {
                                   ({(file.size / 1024 / 1024).toFixed(2)} MB)
                                 </span>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                type="button"
-                                onClick={() => handleRemoveFile(index)}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
+                              {!isReviewMode && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  type="button"
+                                  onClick={() => handleRemoveFile(index)}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
                       <div className="space-y-2">
                         <Label htmlFor="evidenceNote">Additional Notes</Label>
-                        <Textarea id="evidenceNote" placeholder="Describe MVP features, roadmap milestones..." value={formData.evidenceNote} onChange={(e) => handleInputChange("evidenceNote", e.target.value)} className="bg-background/50" />
+                        <Textarea id="evidenceNote" disabled={isReviewMode} placeholder="Describe MVP features, roadmap milestones..." value={formData.evidenceNote} onChange={(e) => handleInputChange("evidenceNote", e.target.value)} className="bg-background/50" />
                       </div>
                     </div>
                   </motion.div>
@@ -648,20 +646,20 @@ const SubmitIdea = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="regionFeasibility" className="text-foreground flex items-center gap-2"><Globe className="w-4 h-4 text-primary" /> Region Feasibility</Label>
-                    <Select value={formData.regionFeasibility} onValueChange={(v) => handleInputChange("regionFeasibility", v)}>
+                    <Select disabled={isReviewMode} value={formData.regionFeasibility} onValueChange={(v) => handleInputChange("regionFeasibility", v)}>
                       <SelectTrigger className="h-12 bg-muted/50 border-border/50"><SelectValue placeholder="Select region" /></SelectTrigger>
                       <SelectContent>{REGIONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="marketPotential" className="text-foreground flex items-center gap-2"><BarChart className="w-4 h-4 text-primary" /> Market Potential</Label>
-                    <Input id="marketPotential" placeholder="e.g., High ($10B+), Niche ($1M+)" value={formData.marketPotential} onChange={(e) => handleInputChange("marketPotential", e.target.value)} className="h-12 bg-muted/50 border-border/50" />
+                    <Input id="marketPotential" disabled={isReviewMode} placeholder="e.g., High ($10B+), Niche ($1M+)" value={formData.marketPotential} onChange={(e) => handleInputChange("marketPotential", e.target.value)} className="h-12 bg-muted/50 border-border/50" />
                   </div>
                 </div>
                 {/* Target audience */}
                 <div className="space-y-2">
                   <Label htmlFor="targetAudience" className="text-foreground flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> Target Audience</Label>
-                  <Select value={formData.targetAudience} onValueChange={(v) => handleInputChange("targetAudience", v)}>
+                  <Select disabled={isReviewMode} value={formData.targetAudience} onValueChange={(v) => handleInputChange("targetAudience", v)}>
                     <SelectTrigger className="h-12 bg-muted/50 border-border/50"><SelectValue placeholder="Select audience" /></SelectTrigger>
                     <SelectContent>{TARGET_AUDIENCES.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent>
                   </Select>
@@ -672,7 +670,7 @@ const SubmitIdea = () => {
                     <Label htmlFor="price" className="text-foreground flex items-center gap-2"><DollarSign className="w-4 h-4 text-primary" /> Price (USD)</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input id="price" type="number" placeholder="299" value={formData.price} onChange={(e) => handleInputChange("price", e.target.value)} className="h-12 pl-10 bg-muted/50 border-border/50" />
+                      <Input id="price" type="number" disabled={isReviewMode} placeholder="299" value={formData.price} onChange={(e) => handleInputChange("price", e.target.value)} className="h-12 pl-10 bg-muted/50 border-border/50" />
                     </div>
                   </div>
                 </div>
@@ -682,11 +680,11 @@ const SubmitIdea = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
                       <Label htmlFor="investmentReady" className="cursor-pointer">Investment Ready?</Label>
-                      <Switch id="investmentReady" checked={formData.investmentReady} onCheckedChange={(c) => handleInputChange("investmentReady", c)} />
+                      <Switch id="investmentReady" disabled={isReviewMode} checked={formData.investmentReady} onCheckedChange={(c) => handleInputChange("investmentReady", c)} />
                     </div>
                     <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
                       <Label htmlFor="lookingForPartner" className="cursor-pointer flex items-center gap-2"><Handshake className="w-4 h-4" /> Looking for Partner?</Label>
-                      <Switch id="lookingForPartner" checked={formData.lookingForPartner} onCheckedChange={(c) => handleInputChange("lookingForPartner", c)} />
+                      <Switch id="lookingForPartner" disabled={isReviewMode} checked={formData.lookingForPartner} onCheckedChange={(c) => handleInputChange("lookingForPartner", c)} />
                     </div>
                   </div>
                 </div>
@@ -701,10 +699,10 @@ const SubmitIdea = () => {
                 </div>
                 {aiValidation.status === "idle" && (
                   <div className="text-center">
-                    <Button variant="hero" size="xl" onClick={handleValidate} disabled={completeness < 50}>
-                      <Sparkles className="w-5 h-5 mr-2" /> Validate My Idea
+                    <Button variant="hero" size="xl" onClick={handleValidate} disabled={completeness < 50 || isReviewMode}>
+                      <Sparkles className="w-5 h-5 mr-2" /> {isReviewMode ? "Validation Status" : "Validate My Idea"}
                     </Button>
-                    {completeness < 50 && <p className="text-sm text-muted-foreground mt-3">Complete at least 50% of the form to validate</p>}
+                    {!isReviewMode && completeness < 50 && <p className="text-sm text-muted-foreground mt-3">Complete at least 50% of the form to validate</p>}
                   </div>
                 )}
                 {aiValidation.status === "validating" && (
@@ -726,7 +724,7 @@ const SubmitIdea = () => {
                       {aiValidation.status === "passed" ? (<><Check className="w-5 h-5 text-primary" /><span className="text-primary font-medium">Validation Passed</span></>) : (<><AlertCircle className="w-5 h-5 text-destructive" /><span className="text-destructive font-medium">Needs Improvement</span></>)}
                     </div>
                     <div className="space-y-3"><h3 className="font-medium text-foreground">AI Feedback:</h3>{aiValidation.feedback.map((f, i) => (<div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"><Check className="w-5 h-5 text-primary mt-0.5 shrink-0" /><span className="text-muted-foreground text-sm">{f}</span></div>))}</div>
-                    {aiValidation.status === "passed" && (
+                    {aiValidation.status === "passed" && !isReviewMode && (
                       <Button variant="hero" size="xl" className="w-full" onClick={handleSubmitIdea}>
                         {isEditing ? "Update Idea" : "Submit to Marketplace"}
                         <ArrowRight className="w-5 h-5 ml-2" />
@@ -742,7 +740,7 @@ const SubmitIdea = () => {
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/50">
             <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={step === 1}><ArrowLeft className="w-4 h-4 mr-2" />Previous</Button>
             {step < 4 && (<Button variant="default" onClick={() => setStep(step + 1)}>Next<ArrowRight className="w-4 h-4 ml-2" /></Button>)}
-            {step === 4 && (
+            {step === 4 && !isReviewMode && (
               <Button variant="default" onClick={handleSubmitIdea} className="bg-gradient-to-r from-primary to-secondary">
                 <Sparkles className="w-4 h-4 mr-2" />
                 {isEditing ? "Update Idea" : "Submit Idea to Marketplace"}

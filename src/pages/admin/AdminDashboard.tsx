@@ -275,7 +275,7 @@ const IdeasManager = () => {
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
-                                                onClick={() => window.open(`/buy/${idea.slug}`, '_blank')} title="View Live">
+                                                onClick={() => window.open(`/submit-idea?id=${idea.id}&mode=review`, '_blank')} title="View Live (Review Mode)">
                                                 <Eye className="w-4 h-4" />
                                             </Button>
 

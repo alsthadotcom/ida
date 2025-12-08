@@ -46,7 +46,13 @@ const AdminRedirect = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (!loading && user?.email === 'idamarketplace@gmail.com' && !location.pathname.startsWith('/admin')) {
+  // Paths that admin is allowed to visit without being redirected to /admin
+  const allowedPaths = ['/buy/', '/submit-idea', '/demo/', '/profile'];
+
+  if (!loading &&
+    user?.email === 'idamarketplace@gmail.com' &&
+    !location.pathname.startsWith('/admin') &&
+    !allowedPaths.some(path => location.pathname.startsWith(path))) {
     return <Navigate to="/admin" replace />;
   }
   return null;
