@@ -103,6 +103,10 @@ export async function createIdea(ideaData: any): Promise<string> {
             evidence_note: ideaData.evidenceNote,
             github_repo_url: ideaData.githubRepoUrl || "",
             mvp_file_urls: ideaData.mvpFileUrls || "",
+
+            // AI Scores
+            ai_scores: ideaData.aiScores ? JSON.stringify(ideaData.aiScores) : null,
+
             // Metadata
             views: 0,
             status: "New",
@@ -303,6 +307,10 @@ export async function updateIdea(id: string, ideaData: any): Promise<void> {
             type_of_topic: ideaData.typeOfTopic,
             // Evidence
             evidence_note: ideaData.evidenceNote,
+
+            // AI Scores
+            ai_scores: ideaData.aiScores ? JSON.stringify(ideaData.aiScores) : undefined,
+
             updated_at: new Date().toISOString(),
         };
 

@@ -107,15 +107,6 @@
   }
 }
 
-/* Custom Cursor Styles - Optimized */
-* {
-  cursor: none !important;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
 /* Hide scrollbar for Chrome, Safari and Opera */
 *::-webkit-scrollbar {
   display: none;
@@ -127,38 +118,6 @@
   /* IE and Edge */
   scrollbar-width: none;
   /* Firefox */
-}
-
-body {
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.cursor-dot-simple {
-  width: 20px;
-  height: 20px;
-  background: hsl(262 83% 68%);
-  border: 2px solid white;
-  /* Added for contrast */
-  border-radius: 50%;
-  position: fixed;
-  top: -10px;
-  left: -10px;
-  pointer-events: none;
-  z-index: 2147483647;
-  will-change: transform;
-  transition: transform 0.065s ease-out;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
-}
-
-/* Allow selection in input fields */
-input,
-textarea,
-[contenteditable="true"] {
-  user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
 }
 
 @layer base {

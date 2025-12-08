@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useSearchParams } from "react-router-dom";
 import { createIdea, fetchIdeaById, updateIdea } from "@/services/ideaService";
+import { validateIdea } from "@/services/aiService";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -78,11 +79,18 @@ const SubmitIdea = () => {
     typeOfTopic: "",
     evidenceNote: "",
   });
-  const [aiValidation, setAiValidation] = useState({
-    status: "idle" as "idle" | "validating" | "passed" | "failed",
+  const [aiValidation, setAiValidation] = useState<{
+    status: "idle" | "validating" | "passed" | "failed";
+    score: number;
+    clarityScore: number;
+    feedback: string[];
+    aiScores?: any;
+  }>({
+    status: "idle",
     score: 0,
     clarityScore: 0,
-    feedback: [] as string[],
+    feedback: [],
+    aiScores: null,
   });
 
   const handleInputChange = (field: string, value: any) => {
@@ -103,23 +111,66 @@ const SubmitIdea = () => {
     return Math.round((filled / values.length) * 100);
   };
 
-  const handleValidate = () => {
-    setAiValidation({ status: "validating", score: 0, clarityScore: 0, feedback: [] });
-    setTimeout(() => {
-      const score = Math.floor(Math.random() * 20) + 80;
-      const clarity = Math.floor(Math.random() * 15) + 85;
+  const handleValidate = async () => {
+    console.log("Starting AI validation with NVIDIA NIM...");
+    setAiValidation({ status: "validating", score: 0, clarityScore: 0, feedback: [], aiScores: null });
+
+    try {
+      const result = await validateIdea(formData);
+      console.log("AI Result:", result);
+
+      // Store the full AI result for later saving to DB
+      const aiScores = {
+        ...result.metrics,
+        ...result.problem_solution,
+        market_potential: result.market_validation.potential,
+        price_validation: result.market_validation.price_validation,
+        summary: result.summary,
+        recommended_category: result.category.recommended,
+        validated_at: new Date().toISOString()
+      };
+
+      // Update form fields with AI suggestions
+      setFormData(prev => ({
+        ...prev,
+        category: result.category.recommended,
+        marketPotential: result.market_validation.potential,
+        // Extract first number from price range for the price field
+        price: result.market_validation.price_validation.match(/\$?(\d+)/)?.[1] || prev.price
+      }));
+
+      // Update validation state for UI display
+      const score = result.metrics.uniqueness;
+      const clarity = result.metrics.clarity;
+
       setAiValidation({
-        status: score >= 70 ? "passed" : "failed",
+        status: "passed",
         score,
         clarityScore: clarity,
         feedback: [
-          "High originality detected - no similar ideas found",
-          "Clear problem‑solution framework",
-          "Target audience well‑defined",
-          "Execution roadmap could be more detailed",
+          result.summary,
+          `Market Potential: ${result.market_validation.potential}`,
+          `Feasibility: ${result.metrics.feasibility}%`,
+          `Recommended Category: ${result.category.recommended}`
         ],
+        aiScores // Store for DB save
       });
-    }, 2000);
+
+      toast({ title: "AI Validation Complete" });
+    } catch (error: any) {
+      console.error(error);
+      setAiValidation({
+        status: "failed",
+        score: 0,
+        clarityScore: 0,
+        feedback: ["Validation failed. Please ensure NVIDIA API Key is set in .env.local"]
+      });
+      toast({
+        title: "Validation Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   useEffect(() => {
@@ -699,10 +750,10 @@ const SubmitIdea = () => {
                 </div>
                 {aiValidation.status === "idle" && (
                   <div className="text-center">
-                    <Button variant="hero" size="xl" onClick={handleValidate} disabled={completeness < 50 || isReviewMode}>
+                    <Button variant="hero" size="xl" onClick={handleValidate} disabled={(!isEditing && completeness < 50) || isReviewMode}>
                       <Sparkles className="w-5 h-5 mr-2" /> {isReviewMode ? "Validation Status" : "Validate My Idea"}
                     </Button>
-                    {!isReviewMode && completeness < 50 && <p className="text-sm text-muted-foreground mt-3">Complete at least 50% of the form to validate</p>}
+                    {!isReviewMode && !isEditing && completeness < 50 && <p className="text-sm text-muted-foreground mt-3">Complete at least 50% of the form to validate</p>}
                   </div>
                 )}
                 {aiValidation.status === "validating" && (
@@ -724,11 +775,18 @@ const SubmitIdea = () => {
                       {aiValidation.status === "passed" ? (<><Check className="w-5 h-5 text-primary" /><span className="text-primary font-medium">Validation Passed</span></>) : (<><AlertCircle className="w-5 h-5 text-destructive" /><span className="text-destructive font-medium">Needs Improvement</span></>)}
                     </div>
                     <div className="space-y-3"><h3 className="font-medium text-foreground">AI Feedback:</h3>{aiValidation.feedback.map((f, i) => (<div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"><Check className="w-5 h-5 text-primary mt-0.5 shrink-0" /><span className="text-muted-foreground text-sm">{f}</span></div>))}</div>
-                    {aiValidation.status === "passed" && !isReviewMode && (
-                      <Button variant="hero" size="xl" className="w-full" onClick={handleSubmitIdea}>
-                        {isEditing ? "Update Idea" : "Submit to Marketplace"}
-                        <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
+                    {!isReviewMode && (
+                      <div className="flex flex-col gap-3">
+                        <Button variant="outline" size="xl" className="w-full" onClick={handleValidate}>
+                          <Sparkles className="w-5 h-5 mr-2" /> Validate Again
+                        </Button>
+                        {aiValidation.status === "passed" && (
+                          <Button variant="hero" size="xl" className="w-full" onClick={handleSubmitIdea}>
+                            {isEditing ? "Update Idea" : "Submit to Marketplace"}
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </motion.div>
                 )}

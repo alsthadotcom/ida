@@ -6,45 +6,22 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
+    proxy: {
+      '/api/nvidia': {
+        target: 'https://integrate.api.nvidia.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nvidia/, ''),
+        secure: false,
+      },
+    },
   },
+  envPrefix: ["VITE_", "NVIDIA_"],
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: {
-        name: "ida Marketplace",
-        short_name: "ida",
-        description: "Buy & sell unique business ideas, frameworks, and roadmaps.",
-        theme_color: "#0f172a",
-        icons: [
-          {
-            src: "/og.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-        ],
-      },
-      workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.destination === "document",
-            handler: "NetworkFirst",
-            options: { cacheName: "html-cache" },
-          },
-          {
-            urlPattern: ({ request }) => request.destination === "image",
-            handler: "CacheFirst",
-            options: {
-              cacheName: "image-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-        ],
-      },
-    }).filter(Boolean),
+    // VitePWA({...}).filter(Boolean) - Disabled to prevent caching issues during dev
   ],
   resolve: {
     alias: {

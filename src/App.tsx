@@ -8,7 +8,6 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
-import CustomCursor from "@/components/ui/CustomCursor";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminRoute from "@/components/auth/AdminRoute";
 import FloatingMessageButton from "@/components/chat/FloatingMessageButton";
@@ -67,7 +66,6 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <CustomCursor />
               <FloatingMessageButton />
               <ScrollToTopWrapper />
               <AdminRedirect />
