@@ -522,32 +522,51 @@ const Profile = () => {
         );
     };
 
-    const handleClearPuterCookies = () => {
+    const handleResetPuterSession = async () => {
         try {
-            // Clear all puter.com cookies
-            const cookies = document.cookie.split(";");
+            toast({
+                title: "Resetting Session...",
+                description: "Connecting to Puter to sign out...",
+            });
 
-            for (let cookie of cookies) {
-                const eqPos = cookie.indexOf("=");
-                const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+            // Ensure Puter is loaded
+            let puterInstance = (window as any).puter;
+            if (!puterInstance) {
+                await new Promise<void>((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://js.puter.com/v2/';
+                    script.onload = () => {
+                        resolve();
+                    };
+                    script.onerror = () => reject(new Error("Failed to load Puter.js"));
+                    document.head.appendChild(script);
+                });
+                puterInstance = (window as any).puter;
+            }
 
-                // Clear for all possible domains
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.puter.com;`;
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=puter.com;`;
+            // Sign out to clear the session
+            if (puterInstance && puterInstance.auth) {
+                await puterInstance.auth.signOut();
             }
 
             toast({
-                title: "Cookies Cleared! ✅",
-                description: "Puter.com cookies have been cleared. Please refresh the page manually (F5 or Ctrl+R) and try submitting your idea again.",
+                title: "Session Reset ✅",
+                description: "Puter session has been reset. You will be prompted to sign in again when you next use AI features.",
             });
 
-                    } catch (error) {
-            console.error("Error clearing cookies:", error);
+        } catch (error) {
+            console.error("Error resetting Puter session:", error);
+            // Fallback: try to clear cookies anyway just in case, though less effective for cross-domain
+            const cookies = document.cookie.split(";");
+            for (let cookie of cookies) {
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            }
+
             toast({
-                title: "Error",
-                description: "Failed to clear cookies. Please try manually clearing your browser cookies.",
-                variant: "destructive",
+                title: "Session Reset (Fallback)",
+                description: "Standard sign-out failed, but local cookies were cleared. Please try submitting your idea again.",
             });
         }
     };
@@ -1208,14 +1227,14 @@ const Profile = () => {
                                         click the button below to clear Puter.js cookies and reset your session.
                                     </p>
                                     <Button
-                                        onClick={handleClearPuterCookies}
+                                        onClick={handleResetPuterSession}
                                         size="sm"
                                         className="gap-2"
                                         variant="default"
                                     >
                                         <RefreshCw className="w-3 h-3" />
                                         <Cookie className="w-3 h-3" />
-                                        Clear Puter Cookies
+                                        Reset Puter Session
                                     </Button>
                                 </CardContent>
                             </Card>
