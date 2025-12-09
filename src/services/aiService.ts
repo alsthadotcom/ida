@@ -50,6 +50,18 @@ export const validateIdea = async (ideaData: any): Promise<AIValidationResult> =
     }
   }
 
+  // --- Ensure Anonymous Auth ---
+  // This prevents the "Log In" popup by forcing a temporary user if not already signed in
+  if (puterInstance.auth && !puterInstance.auth.isSignedIn()) {
+    console.log("Not signed in, attempting auto-login (anonymous)...");
+    try {
+      await puterInstance.auth.signIn({ attempt_temp_user_creation: true });
+      console.log("Auto-login successful.");
+    } catch (e) {
+      console.warn("Auto-login failed, continuing without it:", e);
+    }
+  }
+
   // --- Helper: extract content from diverse Puter responses ---
   const extractContent = (response: any): string => {
     let content: string | null = null;

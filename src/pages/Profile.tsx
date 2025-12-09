@@ -547,6 +547,8 @@ const Profile = () => {
             // Sign out to clear the session
             if (puterInstance && puterInstance.auth) {
                 await puterInstance.auth.signOut();
+                // Immediately create a new anonymous session to avoid "Log In" prompt next time
+                await puterInstance.auth.signIn({ attempt_temp_user_creation: true });
             }
 
             toast({
