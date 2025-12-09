@@ -11,6 +11,8 @@ export interface AIValidationResult {
   };
   market_validation: {
     potential: string; // e.g., "$10M-$100M"
+    market_saturation_percentage: number; // e.g. 65
+    market_saturation_description: string; // e.g. "Highly Saturated"
     price_validation: string; // e.g., "$199-$499"
   };
   problem_solution: {
@@ -24,111 +26,34 @@ export interface AIValidationResult {
 }
 
 export const validateIdea = async (ideaData: any): Promise<AIValidationResult> => {
-  console.log("Starting AI validation with Puter.js...");
+  console.log("Starting AI validation with Dual-Model Pipeline...");
 
-  const prompt = `
-    You are the AI backbone for the IDA platform. Your role is to validate and analyze submitted business ideas with precision, clarity, and structured output.
-    
-    Analyze the following idea:
-    Title: ${ideaData.title}
-    Description: ${ideaData.longDescription || ideaData.shortDescription}
-    Problem: ${ideaData.problem}
-    Solution: ${ideaData.solution}
-    Target Audience: ${ideaData.targetAudience}
-    Category: ${ideaData.category}
-    Current Price: ${ideaData.price}
-    
-    ## Output Format
-    Return ONLY a raw JSON object (no markdown, no explanations, no code blocks):
-    {
-      "metrics": {
-        "clarity": 85,
-        "uniqueness": 70,
-        "feasibility": 60,
-        "executability": 75,
-        "capital_intensive": 40
-      },
-      "market_validation": {
-        "potential": "$50M-$500M",
-        "price_validation": "$199-$499"
-      },
-      "problem_solution": {
-        "problem_validity": 90,
-        "solution_fit": 85
-      },
-      "summary": "Concise 2-3 sentence summary highlighting key strengths and market opportunity.",
-      "category": {
-        "recommended": "HealthTech"
-      }
+  // --- Load Puter.js dynamically if missing ---
+  let puterInstance = (window as any).puter;
+  if (!puterInstance) {
+    console.log("Puter.js not found on window, attempting dynamic load...");
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.puter.com/v2/';
+        script.onload = () => {
+          puterInstance = (window as any).puter;
+          console.log("Puter.js loaded dynamically.");
+          resolve();
+        };
+        script.onerror = () =>
+          reject(new Error("Failed to load Puter.js dynamically. Check your internet connection."));
+        document.head.appendChild(script);
+      });
+    } catch (e) {
+      throw new Error("Puter.js library could not be loaded. Please ensure you are online.");
     }
-    
-    IMPORTANT:
-    - All scores in "metrics" and "problem_solution" must be integers 0-100 (not percentages with %)
-    - "market_validation.potential" must be a realistic market size range in USD (e.g., "$10M-$100M")
-    - "price_validation" must be a realistic price range in USD (e.g., "$99-$299")
-    - "category.recommended" must be one of: AI/ML, FinTech, HealthTech, EdTech, Sustainability, Consumer Products, Services, Other
-    `;
-
-  // Ensure Puter is loaded
-  const puter = (window as any).puter;
-  if (!puter) {
-    throw new Error("Puter.js library is not loaded. Please ensure the script tag is present in index.html and you are online.");
   }
 
-  try {
-    let response;
-    try {
-      console.log("Attempting with gemini-3-pro-preview...");
-      // Try with the specific high-quality model first
-      response = await puter.ai.chat(prompt, { model: 'gemini-3-pro-preview' });
-    } catch (specificError) {
-      console.log("Note: Gemini 3 Pro model unavailable, switching to standard Puter model.");
-      // Fallback to default model if specific one fails
-      response = await puter.ai.chat(prompt);
-    }
+  // --- Helper: extract content from diverse Puter responses ---
+  const extractContent = (response: any): string => {
+    let content: string | null = null;
 
-    // --- DETAILED LOGGING ---
-    try {
-      const currentUser = await puter.auth.getUser();
-
-      console.group("🧠 AI Request Details");
-      console.log("👤 Puter Account:", currentUser?.email || currentUser?.username || "Anonymous/Not Logged In");
-
-      // Extract usage and model from response (based on observed structure)
-      // Structure seen in logs: { usage: [{ type: 'prompt', model: '...', amount: ... }, ...], ... }
-      if (response?.usage && Array.isArray(response.usage)) {
-        const promptUsage = response.usage.find((u: any) => u.type === 'prompt');
-        const completionUsage = response.usage.find((u: any) => u.type === 'completion');
-        const model = promptUsage?.model || completionUsage?.model || "Unknown";
-
-        // Infer provider from model name
-        let provider = "Unknown";
-        if (model.startsWith("gpt") || model.startsWith("o1")) provider = "OpenAI (via Puter)";
-        else if (model.includes("claude")) provider = "Anthropic (via Puter)";
-        else if (model.includes("sonar")) provider = "Perplexity (via Puter)";
-        else if (model.includes("gemini")) provider = "Google (via Puter)";
-        else if (model.includes("mistral")) provider = "Mistral AI (via Puter)";
-        else if (model.includes("meta") || model.includes("llama")) provider = "Meta (via Puter)";
-
-        console.log("🏭 Model Provider:", provider);
-        console.log("ℹ️ Note: Puter manages the upstream API keys. The specific Provider Account email is internal to Puter infrastructure and not visible.");
-
-        console.log("🤖 Model Used:", model);
-        console.log("📊 Token Usage:");
-        console.log(`   • Input:  ${promptUsage?.amount || 0}`);
-        console.log(`   • Output: ${completionUsage?.amount || 0}`);
-        console.log(`   • Total:  ${(promptUsage?.amount || 0) + (completionUsage?.amount || 0)}`);
-      } else {
-        console.log("🤖 Model info not available in standard format.");
-      }
-      console.groupEnd();
-    } catch (logError) {
-      console.warn("Failed to log detailed AI stats:", logError);
-    }
-
-    // Handle various response shapes from Puter
-    // Sometimes it's { message: { content: "..." } }, sometimes { content: "..." }, sometimes just a string.
-    let content = null;
     if (typeof response === 'string') {
       content = response;
     } else if (response?.message?.content) {
@@ -138,24 +63,82 @@ export const validateIdea = async (ideaData: any): Promise<AIValidationResult> =
     }
 
     if (!content) {
-      throw new Error("No content received from Puter AI. Raw response: " + JSON.stringify(response));
+      throw new Error("No content found in Puter AI response.");
     }
+    return content;
+  };
 
-    console.log("Extracted Content:", content);
+  // --- Stage 1: Deep Analysis (Primary / Secondary / Tertiary) ---
+  const stage1Prompt = `
+    You are a senior business analyst. Analyze the idea below deeply:
+    Title: ${ideaData.title}
+    Description: ${ideaData.longDescription || ideaData.shortDescription}
+    Problem: ${ideaData.problem}
+    Solution: ${ideaData.solution}
+    Target Audience: ${ideaData.targetAudience}
+    Category: ${ideaData.category}
+    Current Price: ${ideaData.price}
+    
+    Provide a detailed analysis with market potential, saturation, uniqueness, feasibility, and problem-solution fit.
+  `;
 
-    // Extract JSON from response (handle markdown and explanatory text)
-    const firstBrace = content.indexOf('{');
-    const lastBrace = content.lastIndexOf('}');
+  let analysis: string | null = null;
+  const stage1Models = ["gpt-5.1", "gpt-4.1", "llama-3.1-sonar-large-128k-online"];
 
-    if (firstBrace === -1 || lastBrace === -1) {
-      throw new Error("No JSON object found in AI response");
+  for (const model of stage1Models) {
+    try {
+      console.log(`Stage 1: Trying model ${model}...`);
+      const response = await puterInstance.ai.chat(stage1Prompt, { model });
+      analysis = extractContent(response);
+      console.log(`Stage 1 successful with ${model}`);
+      break;
+    } catch (err) {
+      console.warn(`Stage 1 failed on model ${model}:`, err);
     }
-
-    const jsonStr = content.substring(firstBrace, lastBrace + 1);
-    return JSON.parse(jsonStr);
-
-  } catch (error) {
-    console.error("AI Validation Error:", error);
-    throw error;
   }
+
+  if (!analysis) {
+    throw new Error("AI validation failed. If you're experiencing quota issues, go to Profile → Settings and click 'Clear Puter Cookies' to reset your session.");
+  }
+
+  // --- Stage 2: JSON Scoring (Primary / Secondary) ---
+  const stage2Prompt = `
+    Convert the following analysis into structured JSON strictly following the AIValidationResult schema.
+    Analysis:
+    ${analysis}
+
+    Return ONLY the JSON object. Do not include any markdown, explanation, or text outside the JSON.
+  `;
+
+  let resultJSON: string | null = null;
+  const stage2Models = ["gpt-4.1", "o1-mini"];
+
+  for (const model of stage2Models) {
+    try {
+      console.log(`Stage 2: Trying model ${model} for JSON output...`);
+      const response = await puterInstance.ai.chat(stage2Prompt, { model });
+      resultJSON = extractContent(response);
+      console.log(`Stage 2 successful with ${model}`);
+      break;
+    } catch (err) {
+      console.warn(`Stage 2 failed on model ${model}:`, err);
+    }
+  }
+
+  if (!resultJSON) {
+    throw new Error("AI validation failed. If you're experiencing quota issues, go to Profile → Settings and click 'Clear Puter Cookies' to reset your session.");
+  }
+
+  // --- Parse JSON safely ---
+  const firstBrace = resultJSON.indexOf('{');
+  const lastBrace = resultJSON.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1) {
+    throw new Error("No JSON object found in AI response.");
+  }
+
+  const jsonStr = resultJSON.substring(firstBrace, lastBrace + 1);
+  const parsedResult: AIValidationResult = JSON.parse(jsonStr);
+
+  console.log("AI Validation Complete:", parsedResult);
+  return parsedResult;
 };

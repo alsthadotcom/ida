@@ -119,39 +119,42 @@ const SubmitIdea = () => {
       const result = await validateIdea(formData);
       console.log("AI Result:", result);
 
-      // Store the full AI result for later saving to DB
+      // Store the full AI result for later saving to DB with defensive checks
       const aiScores = {
-        ...result.metrics,
-        ...result.problem_solution,
-        market_potential: result.market_validation.potential,
-        price_validation: result.market_validation.price_validation,
-        summary: result.summary,
-        recommended_category: result.category.recommended,
+        ...(result.metrics || {}),
+        ...(result.problem_solution || {}),
+        market_potential: result.market_validation?.potential || 'Unknown',
+        market_saturation_percentage: result.market_validation?.market_saturation_percentage || 0,
+        market_saturation_description: result.market_validation?.market_saturation_description || 'N/A',
+        price_validation: result.market_validation?.price_validation || 'N/A',
+        summary: result.summary || 'No summary available',
+        recommended_category: result.category?.recommended || formData.category,
         validated_at: new Date().toISOString()
       };
 
-      // Update form fields with AI suggestions
+      // Update form fields with AI suggestions (only if values exist)
       setFormData(prev => ({
         ...prev,
-        category: result.category.recommended,
-        marketPotential: result.market_validation.potential,
+        category: result.category?.recommended || prev.category,
+        marketPotential: result.market_validation?.potential || prev.marketPotential,
         // Extract first number from price range for the price field
-        price: result.market_validation.price_validation.match(/\$?(\d+)/)?.[1] || prev.price
+        price: result.market_validation?.price_validation?.match(/\$?(\d+)/)?.[1] || prev.price
       }));
 
       // Update validation state for UI display
-      const score = result.metrics.uniqueness;
-      const clarity = result.metrics.clarity;
+      const score = result.metrics?.uniqueness || 0;
+      const clarity = result.metrics?.clarity || 0;
 
       setAiValidation({
         status: "passed",
         score,
         clarityScore: clarity,
         feedback: [
-          result.summary,
-          `Market Potential: ${result.market_validation.potential}`,
-          `Feasibility: ${result.metrics.feasibility}%`,
-          `Recommended Category: ${result.category.recommended}`
+          result.summary || 'Analysis complete',
+          `Market Potential: ${result.market_validation?.potential || 'Unknown'}`,
+          `Market Saturation: ${result.market_validation?.market_saturation_percentage || 0}% (${result.market_validation?.market_saturation_description || 'N/A'})`,
+          `Feasibility: ${result.metrics?.feasibility || 0}%`,
+          `Recommended Category: ${result.category?.recommended || formData.category}`
         ],
         aiScores // Store for DB save
       });

@@ -26,6 +26,8 @@ import {
     CheckCircle2,
     XCircle,
     AlertCircle,
+    Cookie,
+    RefreshCw,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -44,7 +46,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getGitHubToken } from "@/services/ideaService";
-
 interface UserProfile {
     id: string;
     email: string;
@@ -139,6 +140,7 @@ const Profile = () => {
             return;
         }
         loadProfileData();
+
     }, [user]);
 
     const loadProfileData = async () => {
@@ -519,6 +521,37 @@ const Profile = () => {
             </Badge>
         );
     };
+
+    const handleClearPuterCookies = () => {
+        try {
+            // Clear all puter.com cookies
+            const cookies = document.cookie.split(";");
+
+            for (let cookie of cookies) {
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+
+                // Clear for all possible domains
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.puter.com;`;
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=puter.com;`;
+            }
+
+            toast({
+                title: "Cookies Cleared! ✅",
+                description: "Puter.com cookies have been cleared. Please refresh the page manually (F5 or Ctrl+R) and try submitting your idea again.",
+            });
+
+                    } catch (error) {
+            console.error("Error clearing cookies:", error);
+            toast({
+                title: "Error",
+                description: "Failed to clear cookies. Please try manually clearing your browser cookies.",
+                variant: "destructive",
+            });
+        }
+    };
+
 
     if (loading) {
         return (
@@ -1157,6 +1190,35 @@ const Profile = () => {
                             {/* Developer Settings */}
 
 
+
+                            {/* Puter Cookie Management - Always Visible */}
+                            <Card className="border-accent/50 bg-accent/5">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-accent">
+                                        <Cookie className="w-5 h-5" />
+                                        Puter API Cookie Reset
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Clear Puter cookies if you encounter quota errors
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <p className="text-sm text-muted-foreground">
+                                        If you get "quota exceeded" or "rate limit" errors when using AI features,
+                                        click the button below to clear Puter.js cookies and reset your session.
+                                    </p>
+                                    <Button
+                                        onClick={handleClearPuterCookies}
+                                        size="sm"
+                                        className="gap-2"
+                                        variant="default"
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                        <Cookie className="w-3 h-3" />
+                                        Clear Puter Cookies
+                                    </Button>
+                                </CardContent>
+                            </Card>
                             {/* Notification Settings */}
                             <Card>
                                 <CardHeader>
