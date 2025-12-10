@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { getProxiedAvatarUrl } from "@/lib/utils";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getGitHubToken } from "@/services/ideaService";
+import PuterLogin from "@/components/auth/PuterLogin";
 interface UserProfile {
     id: string;
     email: string;
@@ -609,7 +611,7 @@ const Profile = () => {
                                 <div className="flex flex-col items-center md:items-start">
                                     <div className="relative group">
                                         <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
-                                            <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
+                                            <AvatarImage src={getProxiedAvatarUrl(profile.avatar_url)} alt={profile.full_name} />
                                             <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary to-secondary text-primary-foreground">
                                                 {getInitials(profile.full_name, profile.email)}
                                             </AvatarFallback>
@@ -1209,8 +1211,7 @@ const Profile = () => {
                     <TabsContent value="settings" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Developer Settings */}
-
-
+                            <PuterLogin />
 
                             {/* Puter Cookie Management - Always Visible */}
                             <Card className="border-accent/50 bg-accent/5">

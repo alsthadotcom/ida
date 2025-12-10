@@ -43,6 +43,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { CATEGORIES, TOPIC_TYPES, TARGET_AUDIENCES, REGIONS } from "@/constants/marketplace";
+import PuterLogin from "@/components/auth/PuterLogin";
 
 const SubmitIdea = () => {
   const { user } = useAuth();
@@ -92,6 +93,7 @@ const SubmitIdea = () => {
     feedback: [],
     aiScores: null,
   });
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const handleInputChange = (field: string, value: any) => {
     if (isReviewMode) return; // Prevent changes in review mode
@@ -162,11 +164,20 @@ const SubmitIdea = () => {
       toast({ title: "AI Validation Complete" });
     } catch (error: any) {
       console.error(error);
+      if (error.message === "NOT_AUTHENTICATED") {
+        setShowAuthPrompt(true);
+        toast({
+          title: "Authentication Required",
+          description: "Please connect your Puter account to continue.",
+        });
+        setAiValidation({ ...aiValidation, status: "idle" }); // Reset to idle so we show the prompt/button
+        return;
+      }
       setAiValidation({
         status: "failed",
         score: 0,
         clarityScore: 0,
-        feedback: ["Validation failed. Please ensure NVIDIA API Key is set in .env.local"]
+        feedback: ["Validation failed. Please ensure you are connected to the internet."]
       });
       toast({
         title: "Validation Failed",
@@ -751,12 +762,18 @@ const SubmitIdea = () => {
                   <h2 className="text-2xl font-outfit font-bold text-foreground mb-2">AI Validation</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">Our AI will analyze your idea for uniqueness, market potential, and execution readiness.</p>
                 </div>
-                {aiValidation.status === "idle" && (
+                {aiValidation.status === "idle" && !showAuthPrompt && (
                   <div className="text-center">
                     <Button variant="hero" size="xl" onClick={handleValidate} disabled={(!isEditing && completeness < 50) || isReviewMode}>
                       <Sparkles className="w-5 h-5 mr-2" /> {isReviewMode ? "Validation Status" : "Validate My Idea"}
                     </Button>
                     {!isReviewMode && !isEditing && completeness < 50 && <p className="text-sm text-muted-foreground mt-3">Complete at least 50% of the form to validate</p>}
+                  </div>
+                )}
+                {showAuthPrompt && (
+                  <div className="max-w-md mx-auto">
+                    <PuterLogin />
+                    <Button variant="ghost" className="w-full mt-2" onClick={() => setShowAuthPrompt(false)}>Cancel</Button>
                   </div>
                 )}
                 {aiValidation.status === "validating" && (

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, getProxiedAvatarUrl } from "@/lib/utils";
 
 const UserMenu = () => {
     const { user, signOut } = useAuth();
@@ -28,7 +29,7 @@ const UserMenu = () => {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.user_metadata?.avatar_url} alt={displayName} />
+                        <AvatarImage src={getProxiedAvatarUrl(user.user_metadata?.avatar_url)} alt={displayName} />
                         <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                 </Button>
