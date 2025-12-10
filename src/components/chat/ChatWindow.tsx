@@ -84,8 +84,8 @@ export default function ChatWindow({ conversationId, recipientName, onClose }: C
         if (window.confirm('Are you sure you want to delete this message?')) {
             try {
                 await deleteMessage(messageId);
-                const msgs = await getMessages(conversationId);
-                setMessages(msgs);
+                // The subscription will automatically update the messages list
+                // after the delete operation completes in the database
             } catch (error) {
                 console.error('Error deleting message:', error);
                 setErrorMessage('Failed to delete message.');
@@ -106,7 +106,7 @@ export default function ChatWindow({ conversationId, recipientName, onClose }: C
     };
 
     return (
-        <Card className="fixed bottom-4 right-4 w-96 h-[600px] shadow-2xl border-border/50 bg-card/95 backdrop-blur-sm flex flex-col z-50">
+        <Card className="fixed bottom-4 left-4 w-96 h-[600px] shadow-2xl border-border/50 bg-card/95 backdrop-blur-sm flex flex-col z-50">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border/50">
                 <div className="flex items-center gap-3">

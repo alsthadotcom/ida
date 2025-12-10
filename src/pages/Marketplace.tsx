@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Search, Filter, Grid, List, Star, Shield, SlidersHorizontal, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Filter, Grid, List, Star, Shield, SlidersHorizontal, X, ArrowRight, TrendingUp, Zap } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -15,135 +15,13 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import IdeaDetailModal from "@/components/ui/IdeaDetailModal";
+import IdeaCard from "@/components/marketplace/IdeaCard";
 import { fetchIdeas } from "@/services/ideaService";
-
 import { CATEGORIES } from "@/constants/marketplace";
 
 const categories = ["All Categories", ...CATEGORIES];
 
-// Ideas will be loaded from Supabase
 
-const UniquenessRing = ({ score, size = "sm" }: { score: number; size?: "sm" | "md" }) => {
-  const dimensions = size === "sm" ? { w: 48, r: 20, stroke: 3 } : { w: 64, r: 28, stroke: 4 };
-  const circumference = 2 * Math.PI * dimensions.r;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
-
-  return (
-    <div className={`relative inline-flex items-center justify-center ${size === "sm" ? "w-12 h-12" : "w-16 h-16"}`}>
-      <svg className={`${size === "sm" ? "w-12 h-12" : "w-16 h-16"}`} style={{ transform: "rotate(-90deg)" }}>
-        <circle
-          cx={dimensions.w / 2}
-          cy={dimensions.w / 2}
-          r={dimensions.r}
-          stroke="hsl(var(--muted))"
-          strokeWidth={dimensions.stroke}
-          fill="none"
-        />
-        <circle
-          cx={dimensions.w / 2}
-          cy={dimensions.w / 2}
-          r={dimensions.r}
-          stroke="hsl(var(--primary))"
-          strokeWidth={dimensions.stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-        />
-      </svg>
-      <span className={`absolute ${size === "sm" ? "text-xs" : "text-sm"} font-bold text-foreground`}>{score}%</span>
-    </div>
-  );
-};
-
-const IdeaCard = ({ idea, viewMode, onClick }: { idea: any; viewMode: "grid" | "list"; onClick: () => void }) => {
-  if (viewMode === "list") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        onClick={onClick}
-        className="idea-card group cursor-pointer"
-      >
-        <div className="p-4 flex items-center gap-6">
-          <UniquenessRing score={idea.uniqueness} size="md" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                {idea.category}
-              </span>
-              <Shield className="w-3.5 h-3.5 text-accent" />
-            </div>
-            <h3 className="font-outfit font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-              {idea.title}
-            </h3>
-            <p className="text-muted-foreground text-sm truncate">{idea.description}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-4 h-4 ${i < idea.rating ? "text-secondary fill-secondary" : "text-muted-foreground"}`}
-              />
-            ))}
-          </div>
-          <div className="text-right">
-            <div className="text-xl font-outfit font-bold text-foreground">{idea.price}</div>
-            <div className="text-xs text-muted-foreground">by {idea.seller}</div>
-          </div>
-          <Button variant="glass" size="sm">View</Button>
-        </div>
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      onClick={onClick}
-      className="idea-card group cursor-pointer"
-    >
-      <div className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-            {idea.category}
-          </span>
-          <div className="flex items-center gap-1">
-            <Shield className="w-4 h-4 text-accent" />
-          </div>
-        </div>
-        <h3 className="text-base font-outfit font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
-          {idea.title}
-        </h3>
-        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{idea.description}</p>
-        <div className="flex items-center gap-3 mb-4">
-          <UniquenessRing score={idea.uniqueness} />
-          <div>
-            <div className="text-xs text-muted-foreground mb-0.5">AI Score</div>
-            <div className="flex items-center gap-0.5">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3.5 h-3.5 ${i < idea.rating ? "text-secondary fill-secondary" : "text-muted-foreground"}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-between pt-3 border-t border-border/50">
-          <div>
-            <div className="text-xl font-outfit font-bold text-foreground">{idea.price}</div>
-            <div className="text-xs text-muted-foreground">by {idea.seller}</div>
-          </div>
-          <Button variant="glass" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-            View
-          </Button>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 const Marketplace = () => {
   const [searchParams] = useSearchParams();
@@ -160,7 +38,6 @@ const Marketplace = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load ideas from Supabase
   useEffect(() => {
     const loadIdeas = async () => {
       try {
@@ -179,7 +56,6 @@ const Marketplace = () => {
     loadIdeas();
   }, []);
 
-  // Read category from URL params
   useEffect(() => {
     const categoryParam = searchParams.get("category");
     if (categoryParam && categories.includes(categoryParam)) {
@@ -191,7 +67,6 @@ const Marketplace = () => {
     const matchesSearch = idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       idea.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "All Categories" || idea.category === selectedCategory;
-    // Handle price parsing safely (remove $ and commas)
     const priceStr = idea.price.toString().replace(/[^0-9.]/g, '');
     const priceNum = parseFloat(priceStr) || 0;
     const matchesPrice = priceNum >= priceRange[0] && priceNum <= priceRange[1];
@@ -204,46 +79,61 @@ const Marketplace = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background font-sans">
       <Navbar />
-      <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <h1 className="text-3xl md:text-4xl font-outfit font-bold text-foreground mb-2">
-              Idea Marketplace
-            </h1>
-            <p className="text-muted-foreground">
-              Discover unique business ideas, frameworks, and execution roadmaps.
-            </p>
-          </motion.div>
+      <main className="pt-32 pb-20 container mx-auto px-4">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-12">
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-4 border border-primary/20"
+            >
+              <TrendingUp className="w-3 h-3" />
+              Marketplace
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="display-lg font-outfit text-foreground mb-4"
+            >
+              Discover Your Next <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">Big Opportunity</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-lg text-muted-foreground"
+            >
+              Browse thousands of AI-validated business frameworks.
+            </motion.p>
+          </div>
+        </div>
 
-          {/* Search & Filters Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-card rounded-xl p-4 mb-6"
-          >
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search Input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="Search ideas..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-muted/50 border-border/50 h-11"
-                />
-              </div>
+        {/* Controls Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="sticky top-24 z-30 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg p-4 mb-8"
+        >
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-grow">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Search by keyword, industry, or tech..."
+                className="pl-12 h-12 rounded-xl bg-secondary/5 border-border/50 focus:ring-primary/20"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
 
-              {/* Category Select */}
+            <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full lg:w-48 bg-muted/50 border-border/50 h-11">
+                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-secondary/5 border-border/50">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,99 +143,126 @@ const Marketplace = () => {
                 </SelectContent>
               </Select>
 
-              {/* Filter Toggle */}
               <Button
                 variant={showFilters ? "default" : "outline"}
-                className="lg:w-auto"
                 onClick={() => setShowFilters(!showFilters)}
+                className="h-12 rounded-xl border-border/50 px-6 gap-2"
               >
-                <SlidersHorizontal className="w-4 h-4 mr-2" />
-                Filters
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filters</span>
               </Button>
 
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-                <button
+              <div className="flex items-center bg-secondary/5 rounded-xl border border-border/50 p-1 h-12">
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-9 w-9 rounded-lg"
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <Grid className="w-4 h-4" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-9 w-9 rounded-lg"
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-md transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <List className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
+          </div>
 
-            {/* Expanded Filters */}
+          {/* Expanded Filters */}
+          <AnimatePresence>
             {showFilters && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="pt-4 mt-4 border-t border-border/50"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
               >
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-foreground mb-2 block">
-                      Price Range: ${priceRange[0]} - ${priceRange[1]}
-                    </label>
-                    <Slider
-                      value={priceRange}
-                      onValueChange={setPriceRange}
-                      max={100000}
-                      step={100}
-                      className="w-full"
-                    />
+                <div className="pt-6 border-t border-border/50 mt-4 px-2">
+                  <div className="flex flex-col md:flex-row justify-between gap-8">
+                    <div className="flex-1 max-w-md">
+                      <label className="text-sm font-bold text-foreground mb-4 block">
+                        Price Range: ${priceRange[0]} - ${priceRange[1]}
+                      </label>
+                      <Slider
+                        value={priceRange}
+                        onValueChange={setPriceRange}
+                        max={100000}
+                        step={100}
+                        className="my-4"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button variant="link" onClick={() => {
+                        setPriceRange([0, 100000]);
+                        setSelectedCategory("All Categories");
+                        setSearchQuery("");
+                      }} className="text-muted-foreground hover:text-destructive">
+                        <X className="w-4 h-4 mr-2" />
+                        Clear All Filters
+                      </Button>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => {
-                    setPriceRange([0, 100000]);
-                    setSelectedCategory("All Categories");
-                    setSearchQuery("");
-                  }}>
-                    <X className="w-4 h-4 mr-1" />
-                    Clear Filters
-                  </Button>
                 </div>
               </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
+        </motion.div>
 
-          {/* Results Count */}
-          <div className="mb-4 text-sm text-muted-foreground">
-            Showing {filteredIdeas.length} ideas
+        {/* Results Area */}
+        <div className="mb-8 flex items-center justify-between text-sm text-muted-foreground">
+          <span>Showing {filteredIdeas.length} results</span>
+          <Select defaultValue="newest">
+            <SelectTrigger className="w-[140px] h-8 text-xs border-none bg-transparent hover:bg-transparent p-0 justify-end">
+              <div className="flex items-center gap-2">
+                <span>Sort by:</span>
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="price_asc">Price: Low to High</SelectItem>
+              <SelectItem value="price_desc">Price: High to Low</SelectItem>
+              <SelectItem value="rating">Top Rated</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-[400px] rounded-3xl bg-secondary/10 animate-pulse" />
+            ))}
           </div>
-
-          {/* Ideas Grid/List */}
-          <div className={viewMode === "grid"
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
-            : "flex flex-col gap-4"
-          }>
+        ) : (
+          <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "flex flex-col gap-4"}>
             {filteredIdeas.map((idea) => (
               <IdeaCard key={idea.id} idea={idea} viewMode={viewMode} onClick={() => handleIdeaClick(idea)} />
             ))}
           </div>
+        )}
 
-          {/* Empty State */}
-          {filteredIdeas.length === 0 && (
-            <div className="text-center py-16">
-              <div className="text-muted-foreground mb-4">No ideas found matching your criteria.</div>
-              <Button variant="outline" onClick={() => {
-                setPriceRange([0, 1000]);
-                setSelectedCategory("All Categories");
-                setSearchQuery("");
-              }}>
-                Clear Filters
-              </Button>
+        {!loading && filteredIdeas.length === 0 && (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-4">
+              <Filter className="w-8 h-8 text-muted-foreground" />
             </div>
-          )}
-        </div>
+            <h3 className="text-xl font-bold mb-2">No ideas found</h3>
+            <p className="text-muted-foreground mb-6">Try adjusting your filters or search query.</p>
+            <Button onClick={() => {
+              setPriceRange([0, 100000]);
+              setSelectedCategory("All Categories");
+              setSearchQuery("");
+            }}>Clear All Filters</Button>
+          </div>
+        )}
+
       </main>
       <Footer />
-
       <IdeaDetailModal
         idea={selectedIdea}
         open={isModalOpen}

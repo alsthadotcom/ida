@@ -10,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     Users, FileText, ShoppingBag, TrendingUp, Trash2, CheckCircle2,
-    XCircle, Eye, Edit, Ban, Download, Shield, Activity, Search
+    XCircle, Eye, Edit, Ban, Download, Shield, Activity, Search, RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 // Services
 import { fetchPlatformStats, fetchAllUsers, deleteUserFromDB, banUser, updateIdeaStatus } from "@/services/adminService";
@@ -98,6 +99,7 @@ const AdminDashboard = () => {
                             <TabsTrigger value="ideas" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">Ideas</TabsTrigger>
                             <TabsTrigger value="users" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">Users</TabsTrigger>
                             <TabsTrigger value="transactions" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">Sales</TabsTrigger>
+                            <TabsTrigger value="kyc" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">KYC</TabsTrigger>
                         </TabsList>
                     </div>
 
@@ -111,6 +113,10 @@ const AdminDashboard = () => {
 
                     <TabsContent value="transactions" className="glass-card p-6 min-h-[500px] outline-none ring-0">
                         <TransactionsManager />
+                    </TabsContent>
+
+                    <TabsContent value="kyc" className="glass-card p-6 min-h-[500px] outline-none ring-0">
+                        <KYCManager />
                     </TabsContent>
                 </Tabs>
 
@@ -141,6 +147,38 @@ const StatCard = ({ title, value, icon: Icon, color, bg, delay }: any) => (
         </Card>
     </motion.div>
 );
+
+const DocumentLink = ({ path, index }: { path: string, index: number }) => {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchUrl = async () => {
+            try {
+                // Create a signed URL valid for 1 hour
+                const { data, error } = await supabase.storage
+                    .from('kyc-documents')
+                    .createSignedUrl(path, 3600);
+                if (data) setUrl(data.signedUrl);
+            } catch (error) {
+                console.error("Error creating signed URL:", error);
+            }
+        };
+        fetchUrl();
+    }, [path]);
+
+    if (!url) return <span className="text-xs text-muted-foreground animate-pulse">Loading doc...</span>;
+
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-blue-500 hover:scale-105 transition-transform"
+        >
+            <FileText className="w-3 h-3" /> Document {index + 1}
+        </a>
+    );
+};
 
 const IdeasManager = () => {
     const [ideas, setIdeas] = useState<any[]>([]);
@@ -524,6 +562,162 @@ const TransactionsManager = () => {
                         </AnimatePresence>
                         {transactions.length === 0 && (
                             <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No transactions recorded yet.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+};
+
+const KYCManager = () => {
+    const [requests, setRequests] = useState<any[]>([]);
+    const { toast } = useToast();
+    const navigate = useNavigate();
+
+    const loadRequests = async () => {
+        // Fetch profiles with kyc_status pending, approved, or rejected
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('kyc_status', ['pending', 'approved', 'rejected'])
+            .order('updated_at', { ascending: false });
+
+        if (data) setRequests(data);
+    };
+
+    useEffect(() => { loadRequests(); }, []);
+
+    const handleAction = async (id: string, action: 'approve' | 'reject') => {
+        let reason = null;
+        if (action === 'reject') {
+            reason = prompt("Please provide a reason for rejection (this will be sent to the user):");
+            if (!reason) return; // Cancelled
+        }
+
+        try {
+            const updates: any = {
+                kyc_status: action === 'approve' ? 'approved' : 'rejected',
+                updated_at: new Date().toISOString()
+            };
+
+            if (action === 'reject') {
+                updates.rejection_reason = reason;
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            toast({
+                title: action === 'approve' ? "Limit Removed. User Verified!" : "Verification Rejected",
+                className: action === 'approve' ? "bg-green-600 text-white" : "bg-red-600 text-white"
+            });
+            loadRequests();
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Action failed", variant: "destructive" });
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold">Identity Verification Requests</h3>
+                <Button variant="outline" size="sm" onClick={loadRequests}><RefreshCw className="w-4 h-4 mr-2" /> Refresh</Button>
+            </div>
+
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Documents</TableHead>
+                            <TableHead>Submitted</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <AnimatePresence>
+                            {requests.map((req) => (
+                                <motion.tr
+                                    key={req.id}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="border-b transition-colors hover:bg-muted/50"
+                                >
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                                {req.full_name?.charAt(0) || req.email?.charAt(0) || "U"}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium flex items-center gap-1">
+                                                    {req.full_name || "Unknown"}
+                                                    <span className="text-muted-foreground text-xs font-normal">(@{req.username})</span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">{req.email}</div>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={
+                                            req.kyc_status === 'approved' ? 'default' :
+                                                req.kyc_status === 'pending' ? 'secondary' : 'destructive'
+                                        } className={
+                                            req.kyc_status === 'approved' ? 'bg-green-500' :
+                                                req.kyc_status === 'pending' ? 'bg-yellow-500 text-yellow-900 hover:bg-yellow-600' : ''
+                                        }>
+                                            {req.kyc_status.toUpperCase()}
+                                        </Badge>
+                                        {req.kyc_status === 'rejected' && (
+                                            <div className="text-xs text-red-500 mt-1 max-w-[200px] truncate" title={req.rejection_reason}>
+                                                Reason: {req.rejection_reason}
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        {req.kyc_documents && req.kyc_documents.length > 0 ? (
+                                            <div className="flex flex-col gap-1">
+                                                {req.kyc_documents.map((doc: string, i: number) => (
+                                                    <DocumentLink key={i} path={doc} index={i} />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs italic">No docs</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                        {new Date(req.updated_at).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {req.kyc_status === 'pending' && (
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8"
+                                                    onClick={() => handleAction(req.id, 'approve')}>
+                                                    <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
+                                                </Button>
+                                                <Button size="sm" variant="destructive" className="h-8"
+                                                    onClick={() => handleAction(req.id, 'reject')}>
+                                                    <XCircle className="w-4 h-4 mr-1" /> Reject
+                                                </Button>
+                                            </div>
+                                        )}
+                                        {req.kyc_status !== 'pending' && (
+                                            <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" disabled>
+                                                {req.kyc_status === 'approved' ? 'Verified' : 'Rejected'}
+                                            </Button>
+                                        )}
+                                    </TableCell>
+                                </motion.tr>
+                            ))}
+                        </AnimatePresence>
+                        {requests.length === 0 && (
+                            <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No verification requests.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>

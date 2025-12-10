@@ -22,129 +22,133 @@ export interface AIValidationResult {
   summary: string;
   category: {
     recommended: string;
+    details?: string;
   };
 }
 
+const STAGE_1_MODELS = ["gpt-5.1", "gpt-4.1", "llama-3.1-sonar-large-128k-online"];
+const STAGE_2_MODELS = ["gpt-4.1", "o1-mini"];
+
+// Helper to load Puter.js
+const loadPuterJs = async (): Promise<any> => {
+  if ((window as any).puter) return (window as any).puter;
+
+  console.log("Puter.js not found, loading dynamically...");
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.onload = () => {
+      console.log("Puter.js loaded.");
+      resolve((window as any).puter);
+    };
+    script.onerror = () => reject(new Error("Failed to load Puter.js. Check connection."));
+    document.head.appendChild(script);
+  });
+};
+
 export const validateIdea = async (ideaData: any): Promise<AIValidationResult> => {
-  console.log("Starting AI validation with Dual-Model Pipeline...");
+  console.log("🚀 Starting AI validation...");
 
-  // --- Load Puter.js dynamically if missing ---
-  let puterInstance = (window as any).puter;
-  if (!puterInstance) {
-    console.log("Puter.js not found on window, attempting dynamic load...");
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://js.puter.com/v2/';
-        script.onload = () => {
-          puterInstance = (window as any).puter;
-          console.log("Puter.js loaded dynamically.");
-          resolve();
-        };
-        script.onerror = () =>
-          reject(new Error("Failed to load Puter.js dynamically. Check your internet connection."));
-        document.head.appendChild(script);
-      });
-    } catch (e) {
-      throw new Error("Puter.js library could not be loaded. Please ensure you are online.");
-    }
+  let puterInstance;
+  try {
+    puterInstance = await loadPuterJs();
+  } catch (e) {
+    throw new Error("Could not initialize AI service. Please check your connection.");
   }
 
-  // --- Check Auth Status ---
+  // Auth Check
   if (puterInstance.auth && !puterInstance.auth.isSignedIn()) {
-    console.warn("User is not signed in to Puter.js");
-    throw new Error("NOT_AUTHENTICATED");
+    console.warn("User not signed into Puter.js");
+    // Consider triggering a login modal or throwing a specific error code
+    throw new Error("NOT_AUTHENTICATED: Please sign in to Puter.js to use AI features.");
   }
 
-  // --- Helper: extract content from diverse Puter responses ---
+  // --- Helper: extract content ---
   const extractContent = (response: any): string => {
-    let content: string | null = null;
+    const content = typeof response === 'string' ? response
+      : response?.message?.content
+        ? response.message.content
+        : response?.content;
 
-    if (typeof response === 'string') {
-      content = response;
-    } else if (response?.message?.content) {
-      content = response.message.content;
-    } else if (response?.content) {
-      content = response.content;
-    }
-
-    if (!content) {
-      throw new Error("No content found in Puter AI response.");
-    }
+    if (!content) throw new Error("Empty response from AI model.");
     return content;
   };
 
-  // --- Stage 1: Deep Analysis (Primary / Secondary / Tertiary) ---
+  // --- Stage 1: Assessment ---
   const stage1Prompt = `
-    You are a senior business analyst. Analyze the idea below deeply:
-    Title: ${ideaData.title}
-    Description: ${ideaData.longDescription || ideaData.shortDescription}
-    Problem: ${ideaData.problem}
-    Solution: ${ideaData.solution}
-    Target Audience: ${ideaData.targetAudience}
-    Category: ${ideaData.category}
-    Current Price: ${ideaData.price}
+    Analyze this business idea deeply acting as a Senior Venture Capital Analyst:
     
-    Provide a detailed analysis with market potential, saturation, uniqueness, feasibility, and problem-solution fit.
+    Title: ${ideaData.title}
+    Details: ${ideaData.description} (Problem: ${ideaData.problem}, Solution: ${ideaData.solution})
+    Target: ${ideaData.targetAudience}
+    Sector: ${ideaData.category}
+    Pricing: ${ideaData.price}
+    
+    Provide a comprehensive analysis covering:
+    1. Market Potential (TAM/SAM/SOM estimation)
+    2. Saturation & Competition
+    3. Uniqueness factors
+    4. Feasibility & Executability
+    5. Problem-Solution Fit
   `;
 
   let analysis: string | null = null;
-  const stage1Models = ["gpt-5.1", "gpt-4.1", "llama-3.1-sonar-large-128k-online"];
-
-  for (const model of stage1Models) {
+  for (const model of STAGE_1_MODELS) {
     try {
-      console.log(`Stage 1: Trying model ${model}...`);
+      console.log(`🤖 Stage 1: Analyzing with ${model}...`);
       const response = await puterInstance.ai.chat(stage1Prompt, { model });
       analysis = extractContent(response);
-      console.log(`Stage 1 successful with ${model}`);
+      console.log(`✅ Stage 1 complete (${model})`);
       break;
     } catch (err) {
-      console.warn(`Stage 1 failed on model ${model}:`, err);
+      console.warn(`⚠️ Stage 1 failed (${model}):`, err);
     }
   }
 
-  if (!analysis) {
-    throw new Error("AI validation failed. If you're experiencing quota issues, go to Profile → Settings and click 'Clear Puter Cookies' to reset your session.");
-  }
+  if (!analysis) throw new Error("AI analysis failed. Please try again later or check quota.");
 
-  // --- Stage 2: JSON Scoring (Primary / Secondary) ---
+  // --- Stage 2: Structuring ---
   const stage2Prompt = `
-    Convert the following analysis into structured JSON strictly following the AIValidationResult schema.
+    Based on the following analysis, generate a strictly valid JSON object matching the AIValidationResult schema.
+    
     Analysis:
     ${analysis}
 
-    Return ONLY the JSON object. Do not include any markdown, explanation, or text outside the JSON.
+    Constraints:
+    - metrics: 0-100 integers
+    - market_saturation_percentage: 0-100 integer
+    - Return ONLY the raw JSON. No markdown formatting.
   `;
 
   let resultJSON: string | null = null;
-  const stage2Models = ["gpt-4.1", "o1-mini"];
-
-  for (const model of stage2Models) {
+  for (const model of STAGE_2_MODELS) {
     try {
-      console.log(`Stage 2: Trying model ${model} for JSON output...`);
+      console.log(`Formatting output with ${model}...`);
       const response = await puterInstance.ai.chat(stage2Prompt, { model });
       resultJSON = extractContent(response);
-      console.log(`Stage 2 successful with ${model}`);
       break;
     } catch (err) {
-      console.warn(`Stage 2 failed on model ${model}:`, err);
+      console.warn(`Stage 2 failed (${model}):`, err);
     }
   }
 
-  if (!resultJSON) {
-    throw new Error("AI validation failed. If you're experiencing quota issues, go to Profile → Settings and click 'Clear Puter Cookies' to reset your session.");
+  if (!resultJSON) throw new Error("Failed to generate structured data.");
+
+  // Clean and parse JSON
+  try {
+    const jsonStr = resultJSON.replace(/```json\n?|\n?```/g, '').trim();
+    const start = jsonStr.indexOf('{');
+    const end = jsonStr.lastIndexOf('}');
+
+    if (start === -1 || end === -1) throw new Error("No JSON found");
+
+    const cleanJson = jsonStr.substring(start, end + 1);
+    const parsedResult: AIValidationResult = JSON.parse(cleanJson);
+
+    console.log("🎉 AI Validation Successful:", parsedResult);
+    return parsedResult;
+  } catch (e) {
+    console.error("JSON Parse Error:", e);
+    throw new Error("Received invalid data from AI. Please retry.");
   }
-
-  // --- Parse JSON safely ---
-  const firstBrace = resultJSON.indexOf('{');
-  const lastBrace = resultJSON.lastIndexOf('}');
-  if (firstBrace === -1 || lastBrace === -1) {
-    throw new Error("No JSON object found in AI response.");
-  }
-
-  const jsonStr = resultJSON.substring(firstBrace, lastBrace + 1);
-  const parsedResult: AIValidationResult = JSON.parse(jsonStr);
-
-  console.log("AI Validation Complete:", parsedResult);
-  return parsedResult;
 };

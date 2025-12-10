@@ -1,40 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-    User,
-    Mail,
-    Calendar,
-    MapPin,
-    Briefcase,
-    Link as LinkIcon,
-    Edit,
-    Save,
-    X,
-    Camera,
-    Lightbulb,
-    ShoppingBag,
-    TrendingUp,
-    DollarSign,
-    Settings,
-    Bell,
-    Shield,
-    Eye,
-    Heart,
-    MessageSquare,
-    Award,
-    Clock,
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
-    Cookie,
-    RefreshCw,
+    User, Mail, Calendar, MapPin, Briefcase, Link as LinkIcon,
+    Edit, Save, X, Camera, Lightbulb, ShoppingBag, TrendingUp,
+    DollarSign, Settings, Bell, Shield, Eye, Heart, MessageSquare,
+    Award, Crown, Clock, CheckCircle2, AlertCircle, FileText, Upload,
+    ChevronRight, ExternalLink, X as XIcon, Plus, Image as ImageIcon,
+    LayoutGrid, List as ListIcon, Camera as CameraIcon, Save as SaveIcon,
+    Edit as EditIcon, Eye as EyeIcon, BadgeCheck, FileCheck, XCircle,
+    Cookie, RefreshCw, EyeOff, Loader2
 } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { getProxiedAvatarUrl } from "@/lib/utils";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -48,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getGitHubToken } from "@/services/ideaService";
 import PuterLogin from "@/components/auth/PuterLogin";
+import IdeaCard from "@/components/marketplace/IdeaCard";
 interface UserProfile {
     id: string;
     email: string;
@@ -59,6 +49,18 @@ interface UserProfile {
     website: string;
     occupation: string;
     created_at: string;
+    qualifications: string;
+    certificates: Certificate[];
+    kyc_status: "none" | "pending" | "approved" | "rejected";
+    kyc_documents: string[];
+    rejection_reason?: string;
+}
+
+interface Certificate {
+    id: string;
+    name: string;
+    url: string;
+    date: string;
 }
 
 interface Activity {
@@ -82,19 +84,25 @@ interface Idea {
     id: string;
     title: string;
     category: string;
-    price: number;
-    status: string;
+    price: string;
+    status: "pending" | "approved" | "rejected";
     views: number;
     likes: number;
     created_at: string;
     image_url: string;
     mvp_file_urls?: string;
+    description: string;
+    uniqueness: number;
+    rating: number;
+    badge?: string;
 }
 
 const Profile = () => {
     const { user, signOut, isAdmin } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { userId } = useParams<{ userId?: string }>();
+    const isOwnProfile = !userId || userId === user?.id;
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
@@ -111,6 +119,11 @@ const Profile = () => {
         website: "",
         occupation: "",
         created_at: new Date().toISOString(),
+        qualifications: "",
+        certificates: [],
+        kyc_status: "none",
+        kyc_documents: [],
+        rejection_reason: "",
     });
 
     const [editedProfile, setEditedProfile] = useState(profile);
@@ -136,24 +149,44 @@ const Profile = () => {
         marketing: false,
     });
 
+    // Prevent double-loading
+    const isLoadingRef = useRef(false);
+
     useEffect(() => {
-        if (!user) {
+        if (!user && !userId) {
             navigate("/login");
             return;
         }
-        loadProfileData();
 
-    }, [user]);
+        // Prevent calling loadProfileData if already loading
+        if (isLoadingRef.current) {
+            console.log("⏭️ Skipping duplicate loadProfileData call");
+            return;
+        }
+
+        loadProfileData();
+    }, [user?.id, userId]);
 
     const loadProfileData = async () => {
+        if (isLoadingRef.current) {
+            console.log("⏭️ Already loading, skipping...");
+            return;
+        }
+
         try {
+            isLoadingRef.current = true;
             setLoading(true);
+
+            // Determine which user's profile to load
+            const targetUserId = userId || user?.id;
+            console.log("👤 Current user ID:", user?.id, "| Target ID:", targetUserId);
+            if (!targetUserId) return;
 
             // Load profile from Supabase
             const { data: profileData, error: profileError } = await supabase
                 .from("profiles")
                 .select("*")
-                .eq("id", user?.id)
+                .eq("id", targetUserId)
                 .single();
 
             if (profileError && profileError.code !== "PGRST116") {
@@ -172,21 +205,35 @@ const Profile = () => {
                     website: profileData.website || "",
                     occupation: profileData.occupation || "",
                     created_at: profileData.created_at || new Date().toISOString(),
+                    qualifications: profileData.qualifications || "",
+                    certificates: profileData.certificates || [],
+                    kyc_status: profileData.kyc_status || "none",
+                    kyc_documents: profileData.kyc_documents || [],
+                    rejection_reason: profileData.rejection_reason || "",
                 };
                 setProfile(loadedProfile);
                 setEditedProfile(loadedProfile);
             }
 
             // Load user's submitted ideas
+            console.log("🔍 Loading ideas for user:", targetUserId);
             const { data: ideasData, error: ideasError } = await supabase
                 .from("ideas")
                 .select("*")
-                .eq("user_id", user?.id)
+                .eq("user_id", targetUserId)
                 .order("created_at", { ascending: false });
 
+            console.log("📊 Ideas query result:", { ideasData, ideasError, count: ideasData?.length });
+
             if (ideasError) {
-                console.error("Error loading ideas:", ideasError);
+                console.error("❌ Error loading ideas:", ideasError);
+                toast({
+                    title: "Error loading ideas",
+                    description: ideasError.message,
+                    variant: "destructive"
+                });
             } else if (ideasData) {
+                console.log("✅ Ideas data received:", ideasData);
                 const ideas: Idea[] = ideasData.map((idea) => ({
                     id: idea.id,
                     title: idea.title,
@@ -197,16 +244,27 @@ const Profile = () => {
                     likes: idea.likes || 0,
                     created_at: idea.created_at,
                     image_url: idea.image_url || "",
+                    description: idea.description || "",
+                    uniqueness: idea.uniqueness || 0,
+                    rating: idea.rating || 0,
+                    badge: idea.badge || ""
                 }));
-                setMyIdeas(ideas);
+
+                // Deduplicate ideas by ID to prevent React key warnings
+                const uniqueIdeas = Array.from(
+                    new Map(ideas.map(idea => [idea.id, idea])).values()
+                );
+
+                console.log("🎯 Mapped ideas:", uniqueIdeas);
+                setMyIdeas(uniqueIdeas);
 
                 // Calculate stats
-                const totalViews = ideas.reduce((sum, idea) => sum + idea.views, 0);
-                const totalLikes = ideas.reduce((sum, idea) => sum + idea.likes, 0);
+                const totalViews = uniqueIdeas.reduce((sum, idea) => sum + idea.views, 0);
+                const totalLikes = uniqueIdeas.reduce((sum, idea) => sum + idea.likes, 0);
 
                 setStats((prev) => ({
                     ...prev,
-                    ideasSubmitted: ideas.length,
+                    ideasSubmitted: uniqueIdeas.length,
                     totalViews,
                     totalLikes,
                 }));
@@ -227,6 +285,7 @@ const Profile = () => {
             });
         } finally {
             setLoading(false);
+            isLoadingRef.current = false;
         }
     };
 
@@ -367,6 +426,9 @@ const Profile = () => {
                     location: editedProfile.location,
                     website: editedProfile.website,
                     occupation: editedProfile.occupation,
+                    qualifications: editedProfile.qualifications,
+                    certificates: editedProfile.certificates,
+                    // KYC status and documents are handled separately to avoid user manipulation
                     updated_at: new Date().toISOString(),
                 });
 
@@ -471,6 +533,141 @@ const Profile = () => {
                 description: error.message || "Failed to upload avatar. Please try again.",
                 variant: "destructive",
             });
+        }
+    };
+
+    const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (editedProfile.certificates.length >= 3) {
+            toast({
+                title: "Limit Reached",
+                description: "You can only upload up to 3 certificates.",
+                variant: "destructive"
+            });
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            toast({ title: "Error", description: "File size must be less than 10MB", variant: "destructive" });
+            return;
+        }
+
+        // Prompt for certificate Name
+        const certName = prompt("What is the name of this certificate? (e.g. AWS Certified, Degree)");
+        if (!certName) {
+            e.target.value = ''; // Reset input if cancelled
+            return;
+        }
+
+        try {
+            toast({ title: "Uploading...", description: "Uploading certificate..." });
+            const fileExt = file.name.split(".").pop();
+            const fileName = `cert-${Date.now()}.${fileExt}`;
+            const filePath = `${user?.id}/${fileName}`;
+
+            // Assuming 'certificates' bucket exists
+            const { error: uploadError } = await supabase.storage.from("certificates").upload(filePath, file);
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from("certificates").getPublicUrl(filePath);
+
+            const newCertificate: Certificate = {
+                id: crypto.randomUUID(),
+                name: certName,
+                url: publicUrl,
+                date: new Date().toISOString()
+            };
+
+            const updatedCertificates = [...editedProfile.certificates, newCertificate];
+            setEditedProfile({ ...editedProfile, certificates: updatedCertificates });
+
+            // Auto-save to DB
+            await supabase.from("profiles").upsert({
+                id: user?.id,
+                certificates: updatedCertificates,
+                updated_at: new Date().toISOString()
+            });
+
+            toast({ title: "Success", description: "Certificate added" });
+        } catch (error: any) {
+            console.error("Certificate upload error:", error);
+            toast({ title: "Error", description: "Failed to upload certificate", variant: "destructive" });
+        } finally {
+            e.target.value = ''; // Reset input
+        }
+    };
+
+    const handleDeleteCertificate = async (certId: string) => {
+        try {
+            const updatedCertificates = editedProfile.certificates.filter(c => c.id !== certId);
+            setEditedProfile({ ...editedProfile, certificates: updatedCertificates });
+            await supabase.from("profiles").upsert({
+                id: user?.id,
+                certificates: updatedCertificates,
+                updated_at: new Date().toISOString()
+            });
+            toast({ title: "Removed", description: "Certificate removed" });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to remove certificate", variant: "destructive" });
+        }
+    };
+
+    const handleKYCUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            toast({ title: "Uploading...", description: "Uploading Identity Document..." });
+            const fileExt = file.name.split(".").pop();
+            const fileName = `kyc-${Date.now()}.${fileExt}`;
+            const filePath = `${user?.id}/${fileName}`;
+
+            // Using 'kyc-documents' bucket (private)
+            const { error: uploadError } = await supabase.storage.from("kyc-documents").upload(filePath, file);
+            if (uploadError) throw uploadError;
+
+            // We stores the path or signed URL. For simplicity storing path and generating signed URL on view could be better,
+            // or public URL if bucket policy handles it. Assuming private bucket, we might need path.
+            // But for now, let's store the path relative to bucket.
+
+            const updatedDocs = [...editedProfile.kyc_documents, filePath];
+            setEditedProfile({ ...editedProfile, kyc_documents: updatedDocs });
+
+            // Save draft state
+            await supabase.from("profiles").upsert({
+                id: user?.id,
+                kyc_documents: updatedDocs,
+                updated_at: new Date().toISOString()
+            });
+
+            toast({ title: "Uploaded", description: "Document uploaded. Don't forget to submit verification." });
+        } catch (error: any) {
+            console.error("KYC upload error:", error);
+            toast({ title: "Error", description: "Failed to upload document", variant: "destructive" });
+        }
+    };
+
+    const submitKYCVerification = async () => {
+        try {
+            if (editedProfile.kyc_documents.length === 0) {
+                toast({ title: "Error", description: "Please upload at least one document", variant: "destructive" });
+                return;
+            }
+
+            await supabase.from("profiles").update({
+                kyc_status: 'pending',
+                rejection_reason: null // clear previous rejection
+            }).eq('id', user?.id);
+
+            setProfile({ ...profile, kyc_status: 'pending' });
+            setEditedProfile({ ...editedProfile, kyc_status: 'pending' });
+
+            toast({ title: "Submitted", description: "Verification request submitted successfully" });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to submit verification", variant: "destructive" });
         }
     };
 
@@ -616,15 +813,36 @@ const Profile = () => {
                                                 {getInitials(profile.full_name, profile.email)}
                                             </AvatarFallback>
                                         </Avatar>
-                                        <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                            <Camera className="w-8 h-8 text-white" />
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={handleAvatarUpload}
-                                            />
-                                        </label>
+
+                                        {/* KYC Verification Badge */}
+                                        {profile.kyc_status === 'approved' && (
+                                            <div className="absolute bottom-0 right-0 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center border-4 border-background shadow-lg">
+                                                <CheckCircle2 className="w-6 h-6 text-white" />
+                                            </div>
+                                        )}
+                                        {(profile.kyc_status === 'rejected' || profile.kyc_status === 'pending' || profile.kyc_status === 'none') && (
+                                            <div className={`absolute bottom-0 right-0 w-10 h-10 rounded-full flex items-center justify-center border-4 border-background shadow-lg ${profile.kyc_status === 'pending' ? 'bg-yellow-500' :
+                                                    profile.kyc_status === 'none' ? 'bg-gray-500' : 'bg-red-500'
+                                                }`}>
+                                                {profile.kyc_status === 'pending' ? (
+                                                    <Clock className="w-6 h-6 text-white" />
+                                                ) : (
+                                                    <XCircle className="w-6 h-6 text-white" />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {isOwnProfile && (
+                                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <Camera className="w-8 h-8 text-white" />
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={handleAvatarUpload}
+                                                />
+                                            </label>
+                                        )}
                                     </div>
                                     <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
                                         <Calendar className="w-4 h-4" />
@@ -657,8 +875,11 @@ const Profile = () => {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <h1 className="text-3xl font-bold mb-1">
+                                                    <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
                                                         {profile.full_name || profile.email.split('@')[0]}
+                                                        {profile.kyc_status === 'approved' && (
+                                                            <BadgeCheck className="w-6 h-6 text-blue-500" fill="currentColor" color="white" />
+                                                        )}
                                                     </h1>
                                                     {profile.username && (
                                                         <p className="text-muted-foreground">@{profile.username}</p>
@@ -666,41 +887,63 @@ const Profile = () => {
                                                 </>
                                             )}
                                         </div>
-                                        <div className="flex gap-2">
-                                            {isEditing ? (
-                                                <>
-                                                    <Button size="sm" onClick={handleSaveProfile} className="gap-2">
-                                                        <Save className="w-4 h-4" />
-                                                        Save
-                                                    </Button>
+                                        {isOwnProfile && (
+                                            <div className="flex gap-2">
+                                                {isEditing ? (
+                                                    <>
+                                                        <Button size="sm" onClick={handleSaveProfile} className="gap-2">
+                                                            <Save className="w-4 h-4" />
+                                                            Save
+                                                        </Button>
+                                                        <Button size="sm" variant="outline" onClick={handleEditToggle} className="gap-2">
+                                                            <X className="w-4 h-4" />
+                                                            Cancel
+                                                        </Button>
+                                                    </>
+                                                ) : (
                                                     <Button size="sm" variant="outline" onClick={handleEditToggle} className="gap-2">
-                                                        <X className="w-4 h-4" />
-                                                        Cancel
+                                                        <Edit className="w-4 h-4" />
+                                                        Edit Profile
                                                     </Button>
-                                                </>
-                                            ) : (
-                                                <Button size="sm" variant="outline" onClick={handleEditToggle} className="gap-2">
-                                                    <Edit className="w-4 h-4" />
-                                                    Edit Profile
-                                                </Button>
-                                            )}
-                                        </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Bio */}
                                     <div className="mb-4">
+                                        <Label className="text-muted-foreground mb-1 block">Bio</Label>
                                         {isEditing ? (
                                             <Textarea
                                                 value={editedProfile.bio}
                                                 onChange={(e) =>
                                                     setEditedProfile({ ...editedProfile, bio: e.target.value })
                                                 }
-                                                placeholder="Tell us about yourself..."
+                                                placeholder="Tell us about yourself"
                                                 className="min-h-[100px]"
                                             />
                                         ) : (
-                                            <p className="text-muted-foreground">
-                                                {profile.bio || "No bio yet. Click edit to add one!"}
+                                            <p className="text-lg leading-relaxed text-foreground/90">
+                                                {profile.bio || "No bio yet."}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Qualifications */}
+                                    <div className="mb-6">
+                                        <Label className="text-muted-foreground mb-1 block">Qualifications</Label>
+                                        {isEditing ? (
+                                            <Textarea
+                                                value={editedProfile.qualifications}
+                                                onChange={(e) =>
+                                                    setEditedProfile({ ...editedProfile, qualifications: e.target.value })
+                                                }
+                                                placeholder="List your degrees, certifications, and skills..."
+                                                className="min-h-[80px]"
+                                            />
+                                        ) : (
+                                            <p className="text-base text-foreground/80 whitespace-pre-wrap">
+                                                {profile.qualifications || "No qualifications listed."}
                                             </p>
                                         )}
                                     </div>
@@ -785,6 +1028,153 @@ const Profile = () => {
                                             </>
                                         )}
                                     </div>
+
+                                    {/* Certificates Section - Redesigned */}
+                                    <div className="mt-6">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="text-base font-semibold flex items-center gap-2">
+                                                <Award className="w-4 h-4 text-primary" />
+                                                Certificates & Achievements
+                                            </h3>
+                                            {isEditing && editedProfile.certificates.length < 3 && (
+                                                <div className="relative">
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf,.jpg,.jpeg,.png"
+                                                        className="hidden"
+                                                        id="cert-upload"
+                                                        onChange={handleCertificateUpload}
+                                                    />
+                                                    <label
+                                                        htmlFor="cert-upload"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+                                                    >
+                                                        <Plus className="w-3 h-3" />
+                                                        Add
+                                                    </label>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {profile.certificates.length > 0 ? (
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {profile.certificates.map((cert) => (
+                                                    <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50 hover:bg-card transition-colors group">
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
+                                                                <FileCheck className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <a
+                                                                    href={cert.url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="font-medium text-sm hover:underline hover:text-primary transition-colors truncate block"
+                                                                >
+                                                                    {cert.name}
+                                                                </a>
+                                                                <p className="text-xs text-muted-foreground">{formatDate(cert.date)}</p>
+                                                            </div>
+                                                        </div>
+                                                        {isEditing && (
+                                                            <button
+                                                                onClick={() => handleDeleteCertificate(cert.id)}
+                                                                className="p-1.5 hover:bg-destructive/10 rounded-md transition-colors text-destructive opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                <XIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground italic py-2">No certificates uploaded yet.</p>
+                                        )}
+                                    </div>
+
+                                    {/* KYC Section - Redesigned */}
+                                    {isOwnProfile && (
+                                        <div className="mt-6 pt-6 border-t border-border">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-base font-semibold flex items-center gap-2">
+                                                    <Shield className="w-4 h-4 text-green-500" />
+                                                    Identity Verification
+                                                </h3>
+                                                <Badge className={`text-xs ${profile.kyc_status === 'approved' ? 'bg-green-500 hover:bg-green-600' :
+                                                    profile.kyc_status === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                                                        profile.kyc_status === 'rejected' ? 'bg-red-500 hover:bg-red-600' :
+                                                            'bg-gray-500 hover:bg-gray-600'
+                                                    }`}>
+                                                    {profile.kyc_status.toUpperCase()}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="p-4 rounded-lg border bg-card/30">
+                                                <p className="text-xs text-muted-foreground mb-3">
+                                                    {profile.kyc_status === 'approved' && 'You are a verified seller.'}
+                                                    {profile.kyc_status === 'pending' && 'Verification in progress. We\'ll notify you soon.'}
+                                                    {profile.kyc_status === 'rejected' && profile.rejection_reason}
+                                                    {profile.kyc_status === 'none' && 'Verify your identity to build trust with buyers.'}
+                                                </p>
+
+                                                {(profile.kyc_status === 'none' || profile.kyc_status === 'rejected') && (
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
+                                                                Complete KYC
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent>
+                                                            <DialogHeader>
+                                                                <DialogTitle>Complete Identity Verification</DialogTitle>
+                                                                <DialogDescription>
+                                                                    Upload a valid government-issued ID (Passport, Driver's License, or National ID) to verify your account.
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+
+                                                            <div className="space-y-4 py-4">
+                                                                {editedProfile.kyc_documents && editedProfile.kyc_documents.length > 0 && (
+                                                                    <div className="flex items-center gap-2 p-3 bg-secondary/20 rounded-lg border border-border">
+                                                                        <FileText className="w-4 h-4 text-primary" />
+                                                                        <span className="text-sm truncate flex-1">Document Uploaded</span>
+                                                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="relative">
+                                                                        <input
+                                                                            type="file"
+                                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                                            className="hidden"
+                                                                            id="kyc-upload-modal"
+                                                                            onChange={handleKYCUpload}
+                                                                        />
+                                                                        <label
+                                                                            htmlFor="kyc-upload-modal"
+                                                                            className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-input hover:border-primary/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
+                                                                        >
+                                                                            <Upload className="w-8 h-8 text-muted-foreground" />
+                                                                            <span className="text-sm font-medium text-muted-foreground">Click to upload document</span>
+                                                                            <span className="text-xs text-muted-foreground/60">(PDF, JPG, PNG up to 10MB)</span>
+                                                                        </label>
+                                                                    </div>
+
+                                                                    <Button
+                                                                        onClick={submitKYCVerification}
+                                                                        disabled={!editedProfile.kyc_documents || editedProfile.kyc_documents.length === 0}
+                                                                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                                                    >
+                                                                        Submit Verification Request
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -838,18 +1228,22 @@ const Profile = () => {
                             <TrendingUp className="w-4 h-4" />
                             Overview
                         </TabsTrigger>
-                        <TabsTrigger value="ideas" className="gap-2">
+                        <TabsTrigger value="my-ideas" className="gap-2">
                             <Lightbulb className="w-4 h-4" />
                             My Ideas
                         </TabsTrigger>
-                        <TabsTrigger value="purchased" className="gap-2">
-                            <ShoppingBag className="w-4 h-4" />
-                            Purchased
-                        </TabsTrigger>
-                        <TabsTrigger value="settings" className="gap-2">
-                            <Settings className="w-4 h-4" />
-                            Settings
-                        </TabsTrigger>
+                        {isOwnProfile && (
+                            <>
+                                <TabsTrigger value="purchased" className="gap-2">
+                                    <ShoppingBag className="w-4 h-4" />
+                                    Purchased
+                                </TabsTrigger>
+                                <TabsTrigger value="settings" className="gap-2">
+                                    <Settings className="w-4 h-4" />
+                                    Settings
+                                </TabsTrigger>
+                            </>
+                        )}
                     </TabsList>
 
                     {/* Overview Tab */}
@@ -955,7 +1349,7 @@ const Profile = () => {
                     </TabsContent>
 
                     {/* My Ideas Tab */}
-                    <TabsContent value="ideas" className="space-y-6">
+                    <TabsContent value="my-ideas" className="space-y-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle>My Submitted Ideas</CardTitle>
@@ -967,48 +1361,14 @@ const Profile = () => {
                                 {myIdeas.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {myIdeas.map((idea) => (
-                                            <motion.div
+                                            <IdeaCard
                                                 key={idea.id}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className="bento-card p-6 hover:shadow-lg transition-all"
-                                            >
-                                                {idea.image_url && (
-                                                    <div className="w-full h-32 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 mb-4 overflow-hidden">
-                                                        <img
-                                                            src={idea.image_url}
-                                                            alt={idea.title}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <h3 className="font-semibold line-clamp-2">{idea.title}</h3>
-                                                    {getStatusBadge(idea.status)}
-                                                </div>
-                                                <div className="flex gap-2 mb-3">
-                                                    <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => navigate(`/submit-idea?id=${idea.id}`)}>
-                                                        <Edit className="w-3 h-3 mr-1" /> Edit
-                                                    </Button>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground mb-3">{idea.category}</p>
-                                                <div className="flex items-center justify-between text-sm">
-                                                    <span className="font-bold text-primary">${idea.price}</span>
-                                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                                        <span className="flex items-center gap-1">
-                                                            <Eye className="w-4 h-4" />
-                                                            {idea.views}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Heart className="w-4 h-4" />
-                                                            {idea.likes}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3 text-xs text-muted-foreground">
-                                                    {formatDate(idea.created_at)}
-                                                </div>
-                                            </motion.div>
+                                                idea={idea}
+                                                variant="profile"
+                                                status={idea.status}
+                                                onEdit={() => navigate(`/submit-idea?id=${idea.id}`)}
+                                                onClick={() => { }} // Could open modal if needed, but for now just display
+                                            />
                                         ))}
                                     </div>
                                 ) : (

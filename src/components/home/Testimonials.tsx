@@ -1,109 +1,100 @@
 import { motion } from "framer-motion";
-import { Star, Quote } from "lucide-react";
+import { Star, Quote, CheckCircle } from "lucide-react";
 
 const testimonials = [
   {
-    name: "David Chen",
-    role: "Tech Entrepreneur",
+    name: "Alex Rivera",
+    role: "SaaS Founder",
     image: "https://randomuser.me/api/portraits/men/32.jpg",
-    content:
-      "Sold my first framework for $500 within 48 hours. The AI validation gave me confidence my idea was truly unique. ida is a game-changer for innovators.",
+    content: "I've sold 3 frameworks on Ida. The validation process is strict but it means buyers trust your listing. Made $4.5k in my first month.",
     rating: 5,
+    verified: true,
   },
   {
-    name: "Maria Rodriguez",
-    role: "Startup Founder",
+    name: "Sarah Chen",
+    role: "Product Manager",
     image: "https://randomuser.me/api/portraits/women/44.jpg",
-    content:
-      "I bought a go-to-market strategy that saved me 3 months of research. The ownership proof gave me peace of mind. Highly recommend!",
+    content: "Ida saved me months of research. I bought a validated GTM strategy for my side project and launched in 2 weeks. The quality is unmatched.",
     rating: 5,
+    verified: true,
   },
   {
     name: "James Wilson",
-    role: "Product Manager",
+    role: "Serial Entrepreneur",
     image: "https://randomuser.me/api/portraits/men/75.jpg",
-    content:
-      "The quality of ideas here is incredible. Found a SaaS onboarding framework that transformed our user activation rates. Worth every penny.",
+    content: "Finally, a place where ideas have actual value. The transparency of the marketplace and the secure IP transfer is exactly what this industry needed.",
     rating: 5,
+    verified: true,
   },
 ];
 
 const Testimonials = () => {
   return (
-    <section className="py-20 md:py-32 bg-background relative overflow-hidden">
+    <section className="py-24 bg-card/30 relative overflow-hidden">
       {/* Background Accent */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-outfit font-bold text-foreground mb-4">
-            Success Stories
+        <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4"
+          >
+            <Star className="w-4 h-4 fill-primary" />
+            <span>Trusted by Builders</span>
+          </motion.div>
+          <h2 className="display-lg font-outfit text-foreground mb-4">
+            Don't Just Take Our Word For It
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of innovators who've turned their ideas into income on ida.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Join thousands of innovators who have successfully bought and sold intellectual property on Ida.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {testimonials.map((testimonial, index) => (
             <motion.div
               key={testimonial.name}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="glass-card rounded-2xl p-6 relative"
+              className="glass-card p-8 rounded-3xl relative flex flex-col h-full border-white/5 bg-white/5 hover:bg-white/10 transition-colors duration-300"
             >
-              {/* Quote Icon */}
-              <div className="absolute top-4 right-4 text-primary/20">
-                <Quote className="w-10 h-10" />
-              </div>
+              <Quote className="absolute top-6 right-6 w-8 h-8 text-white/10 rotate-180" />
 
-              {/* Rating */}
-              <div className="flex items-center gap-1 mb-4">
+              <div className="flex items-center gap-1 mb-6">
                 {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className="w-4 h-4 text-secondary fill-secondary"
-                  />
+                  <Star key={i} className="w-4 h-4 text-orange-400 fill-orange-400" />
                 ))}
               </div>
 
-              {/* Content */}
-              <p className="text-foreground mb-6 relative z-10">
+              <p className="text-foreground/90 text-lg leading-relaxed mb-8 flex-grow">
                 "{testimonial.content}"
               </p>
 
-              {/* Author */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4 mt-auto pt-6 border-t border-white/5">
                 <img
                   src={testimonial.image}
                   alt={testimonial.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
+                  className="w-12 h-12 rounded-full object-cover border border-white/10"
                 />
                 <div>
-                  <div className="font-medium text-foreground">
-                    {testimonial.name}
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-foreground">{testimonial.name}</span>
+                    {testimonial.verified && (
+                      <CheckCircle className="w-3.5 h-3.5 text-primary fill-primary/20" />
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {testimonial.role}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{testimonial.role}</div>
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
-
-
       </div>
     </section>
   );

@@ -16,125 +16,128 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Simulate form submission
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     toast({
       title: "Message sent!",
       description: "We'll get back to you as soon as possible.",
     });
-    
+
     setLoading(false);
     (e.target as HTMLFormElement).reset();
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background selection:bg-primary/20 relative overflow-hidden">
       <Navbar />
-      
-      <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          {/* Hero */}
+
+      {/* Background Ambience */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px]" />
+      </div>
+
+      <main className="pt-32 pb-20 container mx-auto px-4 max-w-7xl">
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-3xl mx-auto mb-20"
+        >
+          <h1 className="text-5xl md:text-7xl font-black font-outfit text-foreground mb-6 tracking-tight">
+            Get in <span className="gradient-text">Touch</span>
+          </h1>
+          <p className="text-xl text-muted-foreground leading-relaxed">
+            Have questions about the marketplace or need support? <br className="hidden md:block" />
+            We're here to help you revolutionize the way ideas are shared.
+          </p>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-8 md:gap-16 items-start">
+
+          {/* Contact Info Column */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center max-w-3xl mx-auto mb-16"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-8"
           >
-            <h1 className="text-4xl md:text-5xl font-outfit font-bold text-foreground mb-6">
-              Get in <span className="gradient-text">Touch</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-            </p>
+            <div className="glass-card p-8 md:p-10 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-none rounded-bl-full group-hover:scale-150 transition-transform duration-700 ease-in-out" />
+
+              <h2 className="text-3xl font-bold font-outfit mb-8">Contact Information</h2>
+
+              <div className="space-y-8">
+                {[
+                  { icon: Mail, title: "Email Us", content: "hello@ida.app", sub: "For general inquiries" },
+                  { icon: MessageSquare, title: "Live Support", content: "Available 24/7", sub: "Average response time: 5 mins" },
+                  { icon: MapPin, title: "HQ", content: "San Francisco, CA", sub: "Innovation District" }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                      <item.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">{item.title}</h3>
+                      <p className="text-foreground font-medium">{item.content}</p>
+                      <p className="text-sm text-muted-foreground">{item.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="glass-card p-8 bg-gradient-to-br from-primary/5 to-transparent border-primary/10">
+              <h3 className="font-bold text-xl mb-2">Looking for Documentation?</h3>
+              <p className="text-muted-foreground mb-4">Check out our comprehensive guides helping you sell your first idea.</p>
+              <Button variant="outline" className="w-full">Visit Help Center</Button>
+            </div>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
-            {/* Contact Form */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <form onSubmit={handleSubmit} className="glass-card p-8 space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Your name" required className="bg-muted/50" />
+          {/* Form Column */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="glass-card p-8 md:p-10 border-primary/20 shadow-2xl shadow-primary/5">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" placeholder="John Doe" required className="h-12 bg-background/50 border-border/50 focus:border-primary/50 transition-colors" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder="john@example.com" required className="h-12 bg-background/50 border-border/50 focus:border-primary/50 transition-colors" />
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="you@example.com" required className="bg-muted/50" />
-                </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
-                  <Input id="subject" placeholder="How can we help?" required className="bg-muted/50" />
+                  <Input id="subject" placeholder="What is this regarding?" required className="h-12 bg-background/50 border-border/50 focus:border-primary/50 transition-colors" />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="message">Message</Label>
-                  <Textarea 
-                    id="message" 
-                    placeholder="Tell us more..."
-                    rows={5}
-                    required 
-                    className="bg-muted/50 resize-none"
+                  <Textarea
+                    id="message"
+                    placeholder="Tell us how we can help..."
+                    rows={6}
+                    required
+                    className="bg-background/50 border-border/50 focus:border-primary/50 transition-colors resize-none p-4"
                   />
                 </div>
 
-                <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+                <Button type="submit" size="lg" className="w-full h-12 text-lg font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all" disabled={loading}>
                   {loading ? "Sending..." : "Send Message"}
                 </Button>
               </form>
-            </motion.div>
-
-            {/* Contact Info */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="space-y-6"
-            >
-              <div className="glass-card p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Mail className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-outfit font-semibold text-foreground mb-1">Email</h3>
-                    <p className="text-muted-foreground text-sm">hello@ida.app</p>
-                    <p className="text-muted-foreground text-sm">support@ida.app</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-outfit font-semibold text-foreground mb-1">Live Chat</h3>
-                    <p className="text-muted-foreground text-sm">Available Mon-Fri, 9am-5pm EST</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-outfit font-semibold text-foreground mb-1">Location</h3>
-                    <p className="text-muted-foreground text-sm">San Francisco, CA</p>
-                    <p className="text-muted-foreground text-sm">United States</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </main>
 

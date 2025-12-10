@@ -47,9 +47,9 @@ const Index = () => {
         `}</script>
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background font-sans anti-aliased overflow-x-hidden">
         <Navbar />
-        <main>
+        <main className="flex flex-col">
           <Hero />
           <Stats />
           <FeaturedIdeas />

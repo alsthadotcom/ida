@@ -5,61 +5,63 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { HelpCircle } from "lucide-react";
 
 const faqs = [
   {
-    question: "How does ida protect my idea ownership?",
+    question: "How does Ida protect my idea ownership?",
     answer:
-      "Every idea submitted to ida receives a SHA-256 hash with timestamp, serving as cryptographic proof of ownership. This creates an immutable record that proves you created the idea at a specific time, protecting your intellectual property.",
+      "Every idea submitted to Ida receives a SHA-256 hash with a timestamp, creating an immutable record of your intellectual property. This serves as cryptographic proof that you possessed this specific idea at a specific time.",
   },
   {
     question: "What makes an idea eligible for the marketplace?",
     answer:
-      "Ideas must pass our AI validation system, which scores them on uniqueness, market potential, clarity, and execution readiness. Ideas scoring above 70% on our uniqueness scale are eligible for listing. We also manually review submissions to ensure quality.",
+      "Ideas must pass our AI validation system, which scores them on uniqueness, market potential, clarity, and execution readiness. We require a uniqueness score of at least 70% to ensure high-quality listings.",
   },
   {
     question: "How much can I earn selling ideas?",
     answer:
-      "Sellers set their own prices, typically ranging from $50 to $5,000+ depending on complexity and market demand. ida takes a 15% platform fee on successful sales. Top sellers on our platform earn over $10,000/month.",
+      "Sellers set their own prices. Frameworks typically sell for $500 - $5,000, while simple concepts might sell for $50 - $200. You keep 85% of the sale price, with Ida taking a 15% platform fee.",
   },
   {
     question: "What happens after I buy an idea?",
     answer:
-      "You receive immediate access to the full idea documentation, including frameworks, roadmaps, and any attachments. You also receive the SHA-256 ownership proof transferred to your account, giving you legal rights to implement the idea.",
+      "You receive the full IP transfer, including all documentation, frameworks, and any attached assets. You also get the cryptographic ownership proof transferred to your account.",
   },
   {
-    question: "Can I sell the same idea I bought?",
+    question: "Can I resell an idea I bought?",
     answer:
-      "No, purchased ideas are for personal or business implementation only. Reselling purchased ideas violates our terms of service. However, you can sell derivative ideas that build upon purchased frameworks if they're substantially different.",
+      "No. When you buy an idea, it is for your own execution and implementation. Reselling the raw idea on the marketplace is prohibited to protect the ecosystem's integrity.",
   },
   {
     question: "How does the AI validation work?",
     answer:
-      "Our AI analyzes your idea across multiple dimensions: originality (comparing against our database and public sources), market potential (analyzing market trends and demand), clarity (evaluating how well-explained the concept is), and execution readiness (assessing if the roadmap is actionable).",
+      "Our multi-agent AI system analyzes your submission against millions of data points to evaluate its originality, feasibility, and market demand, providing a detailed scoring report.",
   },
 ];
 
 const FAQ = () => {
   return (
-    <section className="py-20 md:py-32 bg-card/30 relative overflow-hidden">
+    <section className="py-24 bg-background relative overflow-hidden">
       <div className="container mx-auto px-4 relative z-10">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-outfit font-bold text-foreground mb-4">
+        <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Got Questions?</span>
+          </motion.div>
+          <h2 className="display-lg font-outfit text-foreground mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to know about buying and selling ideas on ida.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Everything you need to know about buying, selling, and protecting your ideas.
           </p>
-        </motion.div>
+        </div>
 
-        {/* FAQ Accordion */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -72,12 +74,12 @@ const FAQ = () => {
               <AccordionItem
                 key={index}
                 value={`item-${index}`}
-                className="glass-card rounded-xl px-6 border-none"
+                className="group border border-white/5 bg-white/5 rounded-2xl px-6 data-[state=open]:bg-white/10 data-[state=open]:border-primary/20 transition-all duration-300"
               >
-                <AccordionTrigger className="text-left font-outfit font-medium text-foreground hover:text-primary py-5 hover:no-underline">
+                <AccordionTrigger className="text-left font-outfit font-semibold text-lg text-foreground hover:text-primary py-6 hover:no-underline [&[data-state=open]]:text-primary transition-colors">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground pb-5">
+                <AccordionContent className="text-muted-foreground text-base leading-relaxed pb-6">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>

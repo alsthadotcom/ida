@@ -61,9 +61,12 @@ const Stats = () => {
     ];
 
     return (
-        <section className="py-12 md:py-16 bg-muted/30 border-y border-border/50">
-            <div className="container mx-auto px-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <section className="py-20 border-y border-white/5 bg-black/5 relative overflow-hidden">
+            {/* Background */}
+            <div className="absolute inset-0 mesh-gradient opacity-10 pointer-events-none" />
+
+            <div className="container mx-auto px-4 relative z-10">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
                     {stats.map((stat, index) => (
                         <motion.div
                             key={stat.label}
@@ -71,29 +74,25 @@ const Stats = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: index * 0.1 }}
                             viewport={{ once: true }}
-                            className="text-center"
+                            className="glass-card p-8 rounded-3xl text-center hover:-translate-y-1 transition-transform duration-300 border-white/5"
                         >
-                            <div
-                                className={`w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center ${stat.color === "primary"
-                                    ? "bg-primary/10 glow-purple"
-                                    : stat.color === "secondary"
-                                        ? "bg-secondary/10 glow-teal"
-                                        : "bg-accent/10 glow-orange"
-                                    }`}
-                            >
+                            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white/5 mb-4 border border-white/10 group-hover:bg-white/10 transition-colors">
                                 <stat.icon
                                     className={`w-6 h-6 ${stat.color === "primary"
                                         ? "text-primary"
                                         : stat.color === "secondary"
-                                            ? "text-secondary"
+                                            ? "text-emerald-400"
                                             : "text-accent"
                                         }`}
                                 />
                             </div>
-                            <div className="text-3xl md:text-4xl font-black mb-1">
+                            <div className={`text-4xl md:text-5xl font-black mb-2 ${stat.color === 'primary' ? 'text-foreground' :
+                                    stat.color === 'secondary' ? 'text-foreground' :
+                                        'text-transparent bg-clip-text bg-gradient-to-r from-accent to-orange-400'
+                                }`}>
                                 {stat.value}
                             </div>
-                            <div className="text-sm text-muted-foreground">{stat.label}</div>
+                            <div className="text-sm md:text-base font-medium text-muted-foreground uppercase tracking-wider">{stat.label}</div>
                         </motion.div>
                     ))}
                 </div>

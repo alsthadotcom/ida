@@ -28,7 +28,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Cookies = lazy(() => import("./pages/Cookies"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const BuyIdea = lazy(() => import("./pages/BuyIdea"));
-const IdeaDemo = lazy(() => import("./pages/IdeaDemo"));
+const IdeaDetails = lazy(() => import("./pages/IdeaDetails"));
 const Profile = lazy(() => import("./pages/Profile"));
 const EnvTest = lazy(() => import("./pages/EnvTest"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -84,6 +84,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/profile/:userId"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/profile"
                     element={
                       <ProtectedRoute>
@@ -109,7 +117,7 @@ const App = () => (
                   <Route path="/cookies" element={<Cookies />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/buy/:slug" element={<BuyIdea />} />
-                  <Route path="/demo/:slug" element={<IdeaDemo />} />
+                  <Route path="/demo/:slug" element={<IdeaDetails />} />
                   <Route path="/env-test" element={<EnvTest />} />
                   <Route
                     path="/admin"

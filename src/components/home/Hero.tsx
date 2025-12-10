@@ -5,101 +5,66 @@ import { Button } from "@/components/ui/button";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden pt-24 pb-16">
-      {/* Mesh Gradient Background */}
-      <div className="absolute inset-0 mesh-gradient opacity-20" />
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-32 pb-20">
+      {/* Premium Mesh Gradient Background */}
+      <div className="absolute inset-0 bg-background" />
+      <div className="absolute inset-0 mesh-gradient opacity-30 animate-pulse-soft" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Micro Badge - Keep at top */}
+        <div className="max-w-5xl mx-auto text-center">
+          {/* Micro Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-primary/20 mb-8"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-8 shadow-xl"
           >
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium text-primary uppercase tracking-wider">
-              AI-Validated Marketplace
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            </span>
+            <span className="text-sm font-semibold text-foreground/90 tracking-wide">
+              The #1 Marketplace for Validated Ideas
             </span>
           </motion.div>
 
-          {/* Headline with Floating Badges */}
-          <div className="relative mb-6">
-            {/* Hot Ideas Badge - Left with Float Animation */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                y: [0, -10, 0],
-              }}
-              transition={{
-                opacity: { duration: 0.6, delay: 0.3 },
-                x: { duration: 0.6, delay: 0.3 },
-                y: {
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.5
-                }
-              }}
-              className="absolute -left-4 md:-left-16 lg:-left-24 top-6 md:top-12 z-10"
-            >
-              <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs md:text-sm font-bold shadow-lg shadow-orange-500/50 rotate-[-8deg] hover:rotate-0 hover:scale-110 transition-all cursor-default whitespace-nowrap">
-                🔥 Hot Ideas
-              </div>
-            </motion.div>
-
-            {/* New Ideas Badge - Right with Float Animation */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                y: [0, -15, 0],
-              }}
-              transition={{
-                opacity: { duration: 0.6, delay: 0.4 },
-                x: { duration: 0.6, delay: 0.4 },
-                y: {
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.7
-                }
-              }}
-              className="absolute -right-4 md:-right-16 lg:-right-24 top-2 md:top-8 z-10"
-            >
-              <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs md:text-sm font-bold shadow-lg shadow-green-500/50 rotate-[8deg] hover:rotate-0 hover:scale-110 transition-all cursor-default whitespace-nowrap">
-                ✨ New Ideas
-              </div>
-            </motion.div>
-
-            {/* Main Headline */}
+          {/* Main Headline */}
+          <div className="relative mb-8 pt-8">
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight"
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="text-6xl md:text-8xl font-black font-outfit text-foreground mb-4 tracking-tight leading-[0.9]"
             >
-              Buy & Sell
-              <br />
-              <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent animate-pulse-slow">
-                Brilliant Ideas
+              Buy & Sell<br />
+              <span className="relative inline-block">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-emerald-400 to-primary background-animate">Brilliant Ideas</span>
+                <span className="absolute -bottom-2 left-0 w-full h-2 bg-primary/20 rounded-full blur-sm"></span>
               </span>
             </motion.h1>
+
+            {/* Floating Elements (Re-positioned) */}
+            <motion.div
+              animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-8 -right-8 md:-right-20 hidden lg:block z-0"
+            >
+              {/* 3D-style Abstract Shape */}
+              <div className="w-32 h-32 bg-gradient-to-br from-primary to-purple-600 rounded-3xl opacity-20 blur-xl animate-pulse"></div>
+            </motion.div>
           </div>
 
-          {/* Description (30% smaller) */}
+          {/* Description */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed font-light"
           >
-            The world's first marketplace for AI-validated business frameworks,
-            execution roadmaps, and unique ideas.
+            Discover, buy, and launch AI-validated business ideas.
+            Skip the brainstorming and start building with <span className="text-foreground font-semibold">guaranteed market potential</span>.
           </motion.p>
 
           {/* CTAs */}
@@ -107,38 +72,47 @@ const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-6"
           >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 size="lg"
-                className="magnetic-btn text-base px-8 py-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/50 animate-glow"
+                className="h-16 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-white text-lg font-bold shadow-lg shadow-primary/30 transition-all duration-300"
                 asChild
               >
                 <Link to="/marketplace">
-                  Explore Ideas
-                  <ArrowRight className="w-5 h-5" />
+                  Explore Marketplace
                 </Link>
               </Button>
             </motion.div>
 
-            <Button
-              size="lg"
-              variant="outline"
-              className="magnetic-btn text-base px-8 py-6 rounded-2xl glass"
-              asChild
-            >
-              <Link to="/submit-idea">Sell Your Idea</Link>
-            </Button>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-16 px-10 rounded-2xl border-2 border-border hover:border-foreground/20 bg-transparent text-lg font-bold hover:bg-secondary/50 transition-all duration-300"
+                asChild
+              >
+                <Link to="/submit-idea" className="flex items-center gap-2">
+                  Sell an Idea
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              </Button>
+            </motion.div>
+          </motion.div>
+
+          {/* Trust Indicators */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8, duration: 1 }}
+            className="mt-16 pt-8 border-t border-border/10 flex flex-wrap justify-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500"
+          >
+            {/* Add logos or stats here if needed, for opacity example */}
+            <div className="text-sm font-semibold tracking-widest uppercase">Trusted by 1,000+ Founders</div>
           </motion.div>
         </div>
       </div>
-
-      {/* Bottom Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
     </section>
   );
 };
