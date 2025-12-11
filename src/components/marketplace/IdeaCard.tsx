@@ -24,7 +24,7 @@ const ScoreRing = ({ score, total = 100, color = "text-primary", label }: { scor
             <div className="relative w-14 h-14 flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90">
                     <circle
-                        className="text-zinc-800"
+                        className="text-secondary"
                         strokeWidth="3"
                         stroke="currentColor"
                         fill="transparent"
@@ -47,7 +47,7 @@ const ScoreRing = ({ score, total = 100, color = "text-primary", label }: { scor
                 </svg>
                 <span className={`absolute text-xs font-bold ${color}`}>{score}</span>
             </div>
-            <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{label}</span>
+            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
         </div>
     );
 };
@@ -70,7 +70,7 @@ const IdeaCard = ({
 
     const scores = [
         { score: viabilityScore, color: "text-primary", label: "Viability" },
-        { score: innovationScore, color: "text-amber-500", label: "Innovation" },
+        { score: innovationScore, color: "text-primary/80", label: "Innovation" },
         { score: impactScore, color: "text-primary", label: "Impact" }
     ];
 
@@ -97,7 +97,7 @@ const IdeaCard = ({
         <motion.div
             whileHover={{ y: -4 }}
             onClick={onClick}
-            className={`group relative flex flex-col justify-between bg-[#0A0A0A] border-2 border-primary/30 hover:border-t-white hover:border-t-[1px] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 ${className}`}
+            className={`group relative flex flex-col justify-between bg-card border border-border hover:border-primary rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-[0_10px_40px_-10px_hsl(var(--primary)/0.2)] transition-all duration-300 ${className}`}
         >
             {/* Edit Button Overlay for Profile Variant */}
             {onEdit && (
@@ -140,7 +140,7 @@ const IdeaCard = ({
                     )}
 
                     {/* Likes */}
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/5 border border-primary/10">
                         <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
                         <span className="text-xs font-bold text-primary">{likesCount}</span>
                     </div>
@@ -165,7 +165,7 @@ const IdeaCard = ({
             </div>
 
             {/* Footer: Price & Details Button */}
-            <div className="px-6 pb-6 pt-2 mt-auto border-t border-white/5">
+            <div className="px-6 pb-6 pt-2 mt-auto border-t border-border/50">
                 <div className="flex items-end justify-between">
                     <div className="flex flex-col">
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-bold mb-0.5">
@@ -179,7 +179,7 @@ const IdeaCard = ({
                     {/* Details Button - Shows on Hover - Darker Background */}
                     <Button
                         size="sm"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity bg-primary/50 hover:bg-primary/40 text-white"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
                         onClick={handleDetailsClick}
                     >
                         Details

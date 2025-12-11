@@ -15,8 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary: Vibrant Green -> Darker */
-    --primary: 142 71% 25%;
+    /* Primary: Vibrant Green (Updated for Light Mode Pop) */
+    --primary: 142 76% 36%;
     --primary-foreground: 145 80% 10%;
 
     /* Secondary: Soft Slate */

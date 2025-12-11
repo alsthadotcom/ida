@@ -39,26 +39,26 @@ export const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between bg-zinc-950 border ${isOpen ? 'border-green-500' : 'border-zinc-700'} rounded-xl px-4 py-3 text-left transition-all hover:border-zinc-500 focus:outline-none`}
+                className={`w-full flex items-center justify-between bg-background border ${isOpen ? 'border-primary' : 'border-input'} rounded-xl px-4 py-3 text-left transition-all hover:border-primary/50 focus:outline-none`}
             >
-                <span className={`font-medium truncate flex-1 ${value ? 'text-white' : 'text-zinc-400'}`}>
+                <span className={`font-medium truncate flex-1 ${value ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {value || placeholder}
                 </span>
                 <div className="flex-shrink-0 ml-2">
                     {isOpen ? (
-                        <ChevronUp className="w-4 h-4 text-zinc-500" />
+                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                        <ChevronDown className="w-4 h-4 text-zinc-500" />
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     )}
                 </div>
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-950 border border-zinc-700 rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 hide-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 hide-scrollbar">
                     <div className="p-2 space-y-1">
                         <button
                             onClick={() => handleSelect('')}
-                            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${value === '' ? 'text-green-500 font-bold bg-zinc-900' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'}`}
+                            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${value === '' ? 'text-primary font-bold bg-accent' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                         >
                             {placeholder === "All Categories" ? "All Assets" : "Select..."}
                         </button>
@@ -67,7 +67,7 @@ export const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
                             <button
                                 key={category}
                                 onClick={() => handleSelect(category)}
-                                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${value === category ? 'text-green-500 font-bold bg-zinc-900' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'}`}
+                                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${value === category ? 'text-primary font-bold bg-accent' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                             >
                                 {category}
                             </button>

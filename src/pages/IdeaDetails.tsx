@@ -141,13 +141,13 @@ const IdeaDetails = () => {
     );
 
     const getScoreColor = (score: number) => {
-        if (score >= 80) return "text-emerald-500 border-emerald-500 shadow-emerald-500/50";
+        if (score >= 80) return "text-primary border-primary shadow-primary/50";
         if (score >= 50) return "text-yellow-500 border-yellow-500 shadow-yellow-500/50";
         return "text-red-500 border-red-500 shadow-red-500/50";
     };
 
     const getScoreColorHex = (score: number) => {
-        if (score >= 80) return "#10b981";
+        if (score >= 80) return "hsl(142 76% 36%)"; // Using standard green hex or var
         if (score >= 50) return "#eab308";
         return "#ef4444";
     };
@@ -200,7 +200,7 @@ const IdeaDetails = () => {
                             }, 100);
                         }
                     }}
-                    className={`absolute -bottom-16 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 backdrop-blur-xl border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 group z-50 ${showDetailedAnalysis ? 'opacity-0 pointer-events-none' : ''}`}
+                    className={`absolute -bottom-16 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 backdrop-blur-xl border border-border/20 hover:border-border/40 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 group z-50 ${showDetailedAnalysis ? 'opacity-0 pointer-events-none' : ''}`}
                 >
                     <BarChart className="w-4 h-4" />
                     <span className="font-bold text-sm">See Detailed AI Analysis</span>
@@ -271,7 +271,7 @@ const IdeaDetails = () => {
                                 <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-tight">Valuation</div>
                                 <div className="text-xl font-black text-orange-500 leading-tight">{idea.price}</div>
                             </div>
-                            <Button asChild size="sm" className="h-12 px-8 text-sm font-bold uppercase tracking-wider rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-500/20 hover:shadow-xl hover:shadow-teal-500/30 transition-all text-white border-0">
+                            <Button asChild size="sm" className="h-12 px-8 text-sm font-bold uppercase tracking-wider rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all text-primary-foreground border-0">
                                 <Link to={`/buy/${slug}`}>
                                     <Award className="w-4 h-4 mr-2" />
                                     Acquire Assets
@@ -294,7 +294,7 @@ const IdeaDetails = () => {
 
                             <div className="flex flex-col gap-6">
                                 <div className="flex flex-wrap gap-3">
-                                    <Badge variant="secondary" className="bg-gradient-to-r from-secondary/60 to-secondary/40 backdrop-blur-sm px-5 py-2 text-sm font-bold border border-white/10 shadow-lg">
+                                    <Badge variant="secondary" className="bg-gradient-to-r from-secondary/60 to-secondary/40 backdrop-blur-sm px-5 py-2 text-sm font-bold border border-border shadow-lg">
                                         {idea.category}
                                     </Badge>
                                     {idea.type_of_topic && (
@@ -327,12 +327,12 @@ const IdeaDetails = () => {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="rounded-full border-zinc-700 bg-background/50 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                                        className="rounded-full border-border bg-background/50 text-muted-foreground hover:text-foreground hover:bg-secondary/20 transition-colors"
                                         onClick={handleShare}
                                     >
                                         {justShared ? (
                                             <>
-                                                <Check className="w-4 h-4 mr-2 text-green-500" />
+                                                <Check className="w-4 h-4 mr-2 text-primary" />
                                                 Copied
                                             </>
                                         ) : (
@@ -363,8 +363,8 @@ const IdeaDetails = () => {
                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-sm">
                                             {idea.seller?.substring(0, 2).toUpperCase() || "SE"}
                                         </div>
-                                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-background flex items-center justify-center">
-                                            <CheckCircle2 className="w-2 h-2 text-white" />
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-background flex items-center justify-center">
+                                            <CheckCircle2 className="w-2 h-2 text-primary-foreground" />
                                         </div>
                                     </div>
                                     <div>
@@ -410,18 +410,18 @@ const IdeaDetails = () => {
                             transition={{ duration: 0.5 }}
                             className="mb-32 relative"
                         >
-                            <div className="max-w-5xl mx-auto bg-zinc-950/80 backdrop-blur-xl rounded-3xl border border-primary/20 shadow-2xl p-8 md:p-12 relative overflow-hidden">
+                            <div className="max-w-5xl mx-auto bg-card/80 backdrop-blur-xl rounded-3xl border border-primary/20 shadow-2xl p-8 md:p-12 relative overflow-hidden">
                                 {/* Header */}
-                                <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
+                                <div className="flex items-center justify-between mb-10 pb-6 border-b border-border">
                                     <div>
-                                        <h3 className="text-3xl font-black font-outfit mb-2 text-white">
+                                        <h3 className="text-3xl font-black font-outfit mb-2 text-foreground">
                                             Detailed AI Analysis
                                         </h3>
-                                        <p className="text-zinc-400">Comprehensive evaluation across 20 critical business metrics</p>
+                                        <p className="text-muted-foreground">Comprehensive evaluation across 20 critical business metrics</p>
                                     </div>
                                     <button
                                         onClick={() => setShowDetailedAnalysis(false)}
-                                        className="p-2 rounded-full hover:bg-white/5 transition-colors text-zinc-400 hover:text-white"
+                                        className="p-2 rounded-full hover:bg-secondary/10 transition-colors text-muted-foreground hover:text-foreground"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -434,8 +434,8 @@ const IdeaDetails = () => {
                                         const isHigh = metric.score >= 80;
                                         const isMed = metric.score >= 50;
 
-                                        const color = isHigh ? "#10b981" : isMed ? "#10b981" : "#ef4444"; // Keep red for critical fails only, green for everything else to be cleaner
-                                        const colorClass = isHigh ? 'bg-emerald-500' : isMed ? 'bg-emerald-500' : 'bg-red-500';
+                                        const color = isHigh ? "hsl(142 76% 36%)" : isMed ? "hsl(142 76% 36%)" : "#ef4444"; // Keep red for critical fails only, green for everything else to be cleaner
+                                        const colorClass = isHigh ? 'bg-primary' : isMed ? 'bg-primary' : 'bg-red-500';
 
                                         // Visual nuance: opacity/brightness varies by score instead of hue
                                         const opacity = 0.5 + (metric.score / 200);
@@ -446,7 +446,7 @@ const IdeaDetails = () => {
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: idx * 0.03 }}
-                                                className="flex items-center gap-6 p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group"
+                                                className="flex items-center gap-6 p-5 rounded-2xl bg-secondary/10 border border-border/50 hover:border-primary/30 transition-all group"
                                             >
                                                 {/* Score Circle */}
                                                 <div className="flex-shrink-0 relative w-16 h-16">
@@ -458,7 +458,7 @@ const IdeaDetails = () => {
                                                             fill="none"
                                                             stroke="currentColor"
                                                             strokeWidth="6"
-                                                            className="text-zinc-800"
+                                                            className="text-muted/20"
                                                         />
                                                         <circle
                                                             cx="50"
@@ -474,18 +474,16 @@ const IdeaDetails = () => {
                                                         />
                                                     </svg>
                                                     <div className="absolute inset-0 flex items-center justify-center">
-                                                        <span className="text-lg font-black text-white">{metric.score}</span>
+                                                        <span className="text-lg font-black text-foreground">{metric.score}</span>
                                                     </div>
                                                 </div>
-
                                                 {/* Metric Info */}
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-bold text-base mb-1 text-white group-hover:text-primary transition-colors">{metric.name}</h4>
-                                                    <p className="text-sm text-zinc-500 leading-relaxed">{metric.description}</p>
+                                                    <h4 className="font-bold text-base mb-1 text-foreground group-hover:text-primary transition-colors">{metric.name}</h4>
+                                                    <p className="text-sm text-muted-foreground leading-relaxed">{metric.description}</p>
                                                 </div>
-
                                                 {/* Score Badge */}
-                                                <div className={`flex-shrink-0 px-4 py-2 rounded-full bg-black/40 border border-white/10`}>
+                                                <div className={`flex-shrink-0 px-4 py-2 rounded-full bg-secondary/30 border border-border`}>
                                                     <span className="text-sm font-bold" style={{ color }}>{metric.score}/100</span>
                                                 </div>
                                             </motion.div>
@@ -505,10 +503,10 @@ const IdeaDetails = () => {
                         className="relative mb-40"
                     >
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-white">
+                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-foreground">
                                 Market Intelligence
                             </h2>
-                            <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
+                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                                 Data-driven insights into market opportunity and scalability
                             </p>
                         </div>
@@ -543,17 +541,15 @@ const IdeaDetails = () => {
                                     whileHover={{ y: -5 }}
                                     className="relative group"
                                 >
-                                    <div className="relative bg-zinc-950 px-8 py-10 rounded-3xl border border-zinc-800 hover:border-primary/50 transition-all overflow-hidden group-hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.1)]">
-
-                                        <div className={`p-4 rounded-2xl bg-emerald-500/10 w-fit mb-6 group-hover:scale-110 transition-transform`}>
+                                    <div className="relative bg-card px-8 py-10 rounded-3xl border border-border hover:border-primary/50 transition-all overflow-hidden group-hover:shadow-[0_0_40px_-10px_hsl(var(--primary)/0.1)]">
+                                        <div className={`p-4 rounded-2xl bg-primary/10 w-fit mb-6 group-hover:scale-110 transition-transform`}>
                                             <stat.icon className={`w-7 h-7 text-primary`} />
                                         </div>
-
-                                        <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">{stat.label}</div>
-                                        <div className={`text-4xl lg:text-5xl font-black mb-3 text-white`}>
+                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">{stat.label}</div>
+                                        <div className={`text-4xl lg:text-5xl font-black mb-3 text-foreground`}>
                                             {stat.value}
                                         </div>
-                                        <p className="text-sm text-zinc-500 font-medium leading-relaxed">{stat.desc}</p>
+                                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">{stat.desc}</p>
                                     </div>
                                 </motion.div>
                             ))}
@@ -568,10 +564,10 @@ const IdeaDetails = () => {
                         className="max-w-6xl mx-auto mb-40"
                     >
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-white">
+                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-foreground">
                                 Digital Assets Included
                             </h2>
-                            <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
+                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                                 Everything you need to launch and scale from day one
                             </p>
                         </div>
@@ -591,8 +587,8 @@ const IdeaDetails = () => {
                                     transition={{ delay: idx * 0.1 }}
                                     whileHover={{ y: -8, scale: 1.02 }}
                                     className={`relative p-8 rounded-[2rem] border transition-all duration-500 group overflow-hidden ${item.included
-                                        ? 'bg-zinc-900/50 border-zinc-800 hover:border-primary/50'
-                                        : 'bg-zinc-900/20 border-zinc-800/50 opacity-60'
+                                        ? 'bg-card border-border hover:border-primary/50'
+                                        : 'bg-secondary/20 border-border/50 opacity-60'
                                         }`}
                                 >
                                     {item.included && (
@@ -601,17 +597,17 @@ const IdeaDetails = () => {
 
                                     <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 ${item.included
                                         ? `bg-primary/10 text-primary group-hover:scale-110`
-                                        : 'bg-zinc-800 text-zinc-600'
+                                        : 'bg-secondary text-muted-foreground'
                                         }`}>
                                         <item.icon className={`w-8 h-8`} />
                                     </div>
 
-                                    <h4 className="font-black text-xl mb-2 text-white">{item.label}</h4>
-                                    <p className="text-sm text-zinc-500 font-medium mb-8">{item.sub}</p>
+                                    <h4 className="font-black text-xl mb-2 text-foreground">{item.label}</h4>
+                                    <p className="text-sm text-muted-foreground font-medium mb-8">{item.sub}</p>
 
-                                    <div className={`flex items-center gap-2.5 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full w-fit ${item.included ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                                    <div className={`flex items-center gap-2.5 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full w-fit ${item.included ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-500'
                                         }`}>
-                                        <div className={`w-2 h-2 rounded-full ${item.included ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                        <div className={`w-2 h-2 rounded-full ${item.included ? 'bg-primary' : 'bg-red-500'}`} />
                                         <span>{item.included ? 'Included' : 'Unavailable'}</span>
                                     </div>
                                 </motion.div>

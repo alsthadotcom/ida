@@ -37,7 +37,7 @@ const DigitalSolutions = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-black text-foreground relative overflow-hidden flex flex-col">
+        <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex flex-col">
             <Navbar />
 
             {/* Ambient Background */}
@@ -54,7 +54,7 @@ const DigitalSolutions = () => {
                     transition={{ duration: 0.5 }}
                     className="mb-8"
                 >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-primary text-sm font-medium tracking-wide">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium tracking-wide">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -70,7 +70,7 @@ const DigitalSolutions = () => {
                     className="text-6xl md:text-8xl font-black font-outfit mb-6 tracking-tighter"
                 >
                     Digital <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-zinc-600">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-500">
                         Solutions.
                     </span>
                 </motion.h1>
@@ -79,7 +79,7 @@ const DigitalSolutions = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.5 }}
-                    className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+                    className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed"
                 >
                     We are building a premium agency to transform your ideas into reality. High-end development, bespoke design, and cutting-edge AI integration.
                 </motion.p>
@@ -92,9 +92,9 @@ const DigitalSolutions = () => {
                     className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16 w-full max-w-3xl"
                 >
                     {services.map((service, idx) => (
-                        <div key={idx} className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800 flex flex-col items-center gap-3 backdrop-blur-sm">
+                        <div key={idx} className="p-4 rounded-2xl bg-card/50 border border-border flex flex-col items-center gap-3 backdrop-blur-sm hover:border-primary/50 transition-colors duration-300">
                             <service.icon className="w-8 h-8 text-primary" />
-                            <span className="text-sm font-medium text-zinc-300">{service.label}</span>
+                            <span className="text-sm font-medium text-foreground">{service.label}</span>
                         </div>
                     ))}
                 </motion.div>
@@ -110,7 +110,7 @@ const DigitalSolutions = () => {
                         <Input
                             type="email"
                             placeholder="Enter your email address"
-                            className="h-12 bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-500 focus-visible:ring-primary"
+                            className="h-12 bg-card/80 border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -130,7 +130,7 @@ const DigitalSolutions = () => {
                             )}
                         </Button>
                     </form>
-                    <p className="text-xs text-zinc-600 mt-4">
+                    <p className="text-xs text-muted-foreground mt-4">
                         Be the first to know when we launch. No spam, ever.
                     </p>
                 </motion.div>

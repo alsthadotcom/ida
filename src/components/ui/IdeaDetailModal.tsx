@@ -132,7 +132,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
 
     // Get score color
     const getScoreColorHex = (score: number) => {
-        if (score >= 80) return "#10b981";
+        if (score >= 80) return "hsl(142 76% 36%)";
         if (score >= 50) return "#eab308";
         return "#ef4444";
     };
@@ -148,7 +148,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden bg-[#0A0A0A] border-primary/30 shadow-2xl [&>button]:hidden">
+            <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden bg-card border-primary/30 shadow-2xl [&>button]:hidden">
                 {/* Scrollable Content */}
                 <div className="overflow-y-auto max-h-[85vh]">
                     <div className="relative p-8 space-y-6">
@@ -168,33 +168,33 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                         >
                                             {idea.category || "General"}
                                         </Badge>
-                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
                                             <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
                                             <span className="text-xs font-bold text-primary">{likesCount}</span>
                                         </div>
                                     </div>
 
-                                    <h2 className="text-3xl md:text-4xl font-black font-outfit text-white leading-tight tracking-tight">
+                                    <h2 className="text-3xl md:text-4xl font-black font-outfit text-foreground leading-tight tracking-tight">
                                         {idea.title}
                                     </h2>
 
                                     {/* Creator Info */}
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center text-white font-bold text-xs">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-xs">
                                             {ownerUsername.substring(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <div className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">
                                                 Created By
                                             </div>
-                                            <div className="font-bold text-sm text-white">
+                                            <div className="font-bold text-sm text-foreground">
                                                 {ownerUsername}
                                             </div>
                                         </div>
                                         {idea.github_repo_url && (
                                             <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
                                                 <Github className="w-3.5 h-3.5 text-primary" />
-                                                <span className="text-xs font-medium text-white/60">
+                                                <span className="text-xs font-medium text-muted-foreground">
                                                     Repo
                                                 </span>
                                             </div>
@@ -209,7 +209,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1 }}
-                            className="relative p-6 rounded-2xl bg-gradient-to-br from-background/40 to-background/20 backdrop-blur-xl border border-white/10 overflow-hidden"
+                            className="relative p-6 rounded-2xl bg-gradient-to-br from-secondary/40 to-secondary/20 backdrop-blur-xl border border-border overflow-hidden"
                         >
                             {/* Background Glow */}
                             <div
@@ -223,11 +223,11 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
                                         <Sparkles className="w-4 h-4 text-primary" />
-                                        <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
+                                        <h3 className="text-sm font-bold text-foreground/80 uppercase tracking-wider">
                                             AI Confidence Score
                                         </h3>
                                     </div>
-                                    <p className="text-xs text-white/50 max-w-xs">
+                                    <p className="text-xs text-muted-foreground max-w-xs">
                                         Analyzed across 20+ business metrics
                                     </p>
                                 </div>
@@ -243,7 +243,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                                 fill="none"
                                                 stroke="currentColor"
                                                 strokeWidth="6"
-                                                className="text-zinc-800"
+                                                className="text-secondary"
                                             />
                                             <circle
                                                 cx="48"
@@ -266,7 +266,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                             >
                                                 {overallScore}
                                             </span>
-                                            <span className="text-[9px] text-white/40 font-medium">
+                                            <span className="text-[9px] text-muted-foreground font-medium">
                                                 /100
                                             </span>
                                         </div>
@@ -282,7 +282,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             transition={{ delay: 0.2 }}
                             className="space-y-2"
                         >
-                            <p className="text-sm text-white/70 leading-relaxed">
+                            <p className="text-sm text-foreground/70 leading-relaxed">
                                 {truncateDescription(idea.description, 120)}
                             </p>
                             {idea.description && idea.description.length > 120 && (
@@ -304,26 +304,26 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10"
+                            className="flex items-center justify-between p-4 rounded-xl bg-secondary/10 border border-border"
                         >
-                            <div className="flex-1 text-center border-r border-white/10">
-                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                            <div className="flex-1 text-center border-r border-border">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">
                                     Market
                                 </div>
-                                <div className="text-sm font-bold text-white">
+                                <div className="text-sm font-bold text-foreground">
                                     {idea.market_potential || "$10B+"}
                                 </div>
                             </div>
-                            <div className="flex-1 text-center border-r border-white/10">
-                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                            <div className="flex-1 text-center border-r border-border">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">
                                     Stage
                                 </div>
-                                <div className="text-sm font-bold text-white">
+                                <div className="text-sm font-bold text-foreground">
                                     {idea.hasMVP ? "MVP Ready" : "Concept"}
                                 </div>
                             </div>
                             <div className="flex-1 text-center">
-                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">
                                     Assets
                                 </div>
                                 <div className="text-sm font-bold text-primary">
@@ -341,7 +341,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                         >
                             <div className="flex items-end justify-between">
                                 <div>
-                                    <div className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">
+                                    <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">
                                         Asking Price
                                     </div>
                                     <div className="text-3xl font-black text-primary font-outfit">
@@ -351,7 +351,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="text-white/60 hover:text-primary hover:bg-transparent transition-colors gap-1"
+                                    className="text-muted-foreground hover:text-primary hover:bg-transparent transition-colors gap-1"
                                     onClick={() => {
                                         onOpenChange(false);
                                         navigate(`/demo/${idea.slug}`);
@@ -377,7 +377,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 <Button
                                     size="lg"
                                     variant="outline"
-                                    className="border-white/20 text-white hover:bg-white/5 hover:border-primary/50 hover:text-white rounded-xl font-bold transition-all"
+                                    className="border-border text-foreground hover:bg-secondary hover:border-primary/50 hover:text-primary rounded-xl font-bold transition-all"
                                     onClick={() => {
                                         onOpenChange(false);
                                         navigate(`/demo/${idea.slug}`);
@@ -389,11 +389,11 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                             </div>
 
                             {/* Action Buttons: Like, Save, Share */}
-                            <div className="flex items-center gap-3 pt-2 border-t border-white/5 mx-[-1rem] px-4">
+                            <div className="flex items-center gap-3 pt-2 border-t border-border mx-[-1rem] px-4">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className={`flex-1 border-zinc-800 bg-black/40 hover:bg-zinc-900 transition-colors ${localLiked ? 'text-pink-500 border-pink-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                    className={`flex-1 border-border bg-secondary/20 hover:bg-secondary transition-colors ${localLiked ? 'text-pink-500 border-pink-500/20' : 'text-muted-foreground hover:text-foreground'}`}
                                     onClick={handleLike}
                                 >
                                     <Heart className={`w-4 h-4 mr-2 ${localLiked ? 'fill-current' : ''}`} />
@@ -402,7 +402,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className={`flex-1 border-zinc-800 bg-black/40 hover:bg-zinc-900 transition-colors ${localSaved ? 'text-yellow-500 border-yellow-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                    className={`flex-1 border-border bg-secondary/20 hover:bg-secondary transition-colors ${localSaved ? 'text-yellow-500 border-yellow-500/20' : 'text-muted-foreground hover:text-foreground'}`}
                                     onClick={handleSave}
                                 >
                                     <Bookmark className={`w-4 h-4 mr-2 ${localSaved ? 'fill-current' : ''}`} />
@@ -411,7 +411,7 @@ const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => 
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 border-zinc-800 bg-black/40 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+                                    className="flex-1 border-border bg-secondary/20 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                                     onClick={handleShare}
                                 >
                                     {justShared ? (

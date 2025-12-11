@@ -109,7 +109,7 @@ const Marketplace = () => {
             >
               <Button
                 size="lg"
-                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all duration-300"
+                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-[0_0_20px_hsl(var(--primary)/0.3)] hover:shadow-[0_0_30px_hsl(var(--primary)/0.5)] transition-all duration-300"
                 asChild
               >
                 <Link to="/submit-idea">
@@ -130,10 +130,10 @@ const Marketplace = () => {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
             <div className="relative flex-grow">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
               <Input
                 placeholder="Search assets, industries, or keywords..."
-                className="pl-12 h-12 rounded-xl bg-secondary/20 border-border/20 focus:border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
+                className="pl-12 h-12 rounded-xl bg-card border-border/20 focus:border-primary text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/20 shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -141,7 +141,7 @@ const Marketplace = () => {
 
             <div className="flex gap-3 overflow-x-auto pb-2 lg:pb-0">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-secondary/20 border-border/20 text-foreground">
+                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-card border-border/20 text-foreground hover:border-primary/50 focus:ring-primary/20">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -162,7 +162,7 @@ const Marketplace = () => {
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className="h-12 rounded-xl border-border/20 bg-secondary/20 hover:bg-secondary/40 text-foreground gap-2 px-6"
+                className={`h-12 rounded-xl border-border/20 bg-card hover:bg-secondary/40 text-foreground gap-2 px-6 hover:border-primary/50 ${showFilters ? 'border-primary text-primary bg-primary/5' : ''}`}
               >
                 <Filter className="w-4 h-4" />
                 Filter

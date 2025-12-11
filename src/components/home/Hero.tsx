@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Lightbulb, DollarSign, Presentation, Building2, Globe2, Banknote } from "lucide-react";
+import { ArrowRight, Sparkles, Lightbulb, DollarSign, Presentation, Building2, Globe2, Banknote, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -30,7 +30,7 @@ const DrawingTransformation = ({ initialIcon: InitialIcon, finalIcon: FinalIcon,
       style={{ top: y, left: x, transform: `rotate(${rotation}deg)` }}
     >
       {/* Reduced size: w-20/h-28 mobile, w-24/h-36 desktop */}
-      <div className={`relative w-20 h-28 md:w-24 md:h-36 rounded-lg backdrop-blur-md transition-all duration-500 ${stage === 2 ? 'bg-zinc-800/90 border-primary/40 shadow-2xl scale-110 -translate-y-4 opacity-100' : 'bg-transparent border-transparent scale-95 opacity-0'}`}>
+      <div className={`relative w-20 h-28 md:w-24 md:h-36 rounded-lg backdrop-blur-md transition-all duration-500 ${stage === 2 ? 'bg-popover/90 border-primary/40 shadow-2xl scale-110 -translate-y-4 opacity-100' : 'bg-transparent border-transparent scale-95 opacity-0'}`}>
 
         {/* Label tag */}
         <div className={`absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground border border-primary/50 text-[8px] font-mono font-bold px-2 py-0.5 rounded-sm transition-all duration-500 ${stage === 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
@@ -52,8 +52,8 @@ const DrawingTransformation = ({ initialIcon: InitialIcon, finalIcon: FinalIcon,
             <FinalIcon className="w-8 h-8 md:w-12 md:h-12 text-primary" />
             {stage === 2 && (
               <div className="mt-3 flex flex-col items-center gap-1">
-                <div className="text-[10px] font-mono text-zinc-300">$1.2M</div>
-                <div className="h-0.5 w-10 bg-zinc-700 rounded-full overflow-hidden">
+                <div className="text-[10px] font-mono text-muted-foreground">$1.2M</div>
+                <div className="h-0.5 w-10 bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-primary w-full animate-[pulse_1.5s_infinite]"></div>
                 </div>
               </div>
@@ -129,7 +129,7 @@ const Hero = () => {
         <div className="hidden md:block">
           <DrawingTransformation
             initialIcon={Banknote}
-            finalIcon={DollarSign}
+            finalIcon={Coins}
             label="LIQUIDITY"
             isActive={activeIndex === 3}
             x="15%"
@@ -146,7 +146,7 @@ const Hero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-8 shadow-xl"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-secondary/20 backdrop-blur-xl border border-border mb-8 shadow-xl"
           >
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -198,8 +198,7 @@ const Hero = () => {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 size="lg"
-                className="h-16 px-10 rounded-2xl hover:opacity-90 text-white text-lg font-bold shadow-lg shadow-primary/30 transition-all duration-300"
-                style={{ backgroundColor: 'hsl(150deg 45.97% 36.45%)' }}
+                className="h-16 px-10 rounded-2xl hover:opacity-90 text-primary-foreground text-lg font-bold shadow-lg shadow-primary/30 transition-all duration-300 bg-primary"
                 asChild
               >
                 <Link to="/marketplace">
