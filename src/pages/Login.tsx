@@ -72,7 +72,7 @@ const Login = () => {
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 border border-white/10 backdrop-blur-sm">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">Welcome Back to Idea Canvas</span>
+                <span className="text-sm font-bold">Welcome Back to IDA</span>
               </div>
 
               <h1 className="text-5xl md:text-6xl font-black font-outfit leading-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">

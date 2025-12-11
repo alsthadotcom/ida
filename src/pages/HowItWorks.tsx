@@ -12,9 +12,9 @@ const steps = [
     subtitle: "Validation First",
     description: "Don't guess. Know. Input your raw concept and our diverse AI council (GPT-4, Claude, Perplexity) instantly evaluates its market viability, uniqueness, and execution readiness.",
     icon: Zap,
-    color: "text-yellow-400",
-    bg: "bg-yellow-400/10",
-    border: "border-yellow-400/20"
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20"
   },
   {
     id: 2,
@@ -22,9 +22,9 @@ const steps = [
     subtitle: "Refinement & Packaging",
     description: "Transform a simple thought into a sellable asset. Our platform helps you build a detailed roadmap, define your MVP features, and package your intellectual property for buyers.",
     icon: Hammer,
-    color: "text-orange-500",
-    bg: "bg-orange-500/10",
-    border: "border-orange-500/20"
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20"
   },
   {
     id: 3,
@@ -32,9 +32,9 @@ const steps = [
     subtitle: "Protection & Ownership",
     description: "Security is paramount. Your idea is timestamped and hashed using SHA-256 encryption, creating immutable proof of ownership on the blockchain before it ever hits the market.",
     icon: Shield,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20"
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20"
   },
   {
     id: 4,
@@ -42,9 +42,9 @@ const steps = [
     subtitle: "Global Marketplace",
     description: "Your asset goes live. Investors, founders, and enterprises browse verified concepts. When a match is found, ownership transfers securely, and funds are released to your wallet.",
     icon: Globe,
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20"
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20"
   }
 ];
 
@@ -71,7 +71,7 @@ const HowItWorks = () => {
             <Sparkles className="w-3 h-3" /> The Lifecycle of an Idea
           </div>
           <h1 className="text-5xl md:text-8xl font-black font-outfit text-foreground mb-8 tracking-tighter">
-            From <span className="text-yellow-400">Spark</span> <br />
+            From <span className="text-primary">Spark</span> <br />
             to <span className="gradient-text">Sale</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

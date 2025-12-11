@@ -188,7 +188,7 @@ const About = () => {
                 <Button size="lg" className="h-14 px-8 text-lg rounded-full font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all" onClick={() => navigate('/signup')}>
                   Join Community
                 </Button>
-                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full font-bold glass bg-transparent hover:bg-white/5" onClick={() => navigate('/marketplace')}>
+                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full font-bold glass bg-transparent hover:bg-white/5" style={{ backgroundColor: 'hsl(142deg 48.97% 36.45%)', borderColor: 'transparent', color: 'white' }} onClick={() => navigate('/marketplace')}>
                   Explore Marketplace
                 </Button>
               </div>

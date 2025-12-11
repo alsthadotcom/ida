@@ -34,7 +34,7 @@ const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-32 bg-background relative overflow-hidden">
+    <section id="how-it-works" className="py-32 bg-background relative overflow-hidden">
       {/* Background accents */}
       <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
         <div className="absolute top-1/4 left-0 w-96 h-96 bg-primary/5 rounded-full blur-[128px]" />

@@ -1,7 +1,14 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Star, Zap, Shield, User, FileText } from "lucide-react";
+import {
+    Github, Award, ChevronRight, Heart, Sparkles, Eye,
+    Bookmark, Share2, Check
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { incrementIdeaLikes, decrementIdeaLikes } from "@/services/ideaService";
 
 interface IdeaDetailModalProps {
     idea: any;
@@ -10,161 +17,417 @@ interface IdeaDetailModalProps {
 }
 
 const IdeaDetailModal = ({ idea, open, onOpenChange }: IdeaDetailModalProps) => {
+    const navigate = useNavigate();
+
+    // State for interactions
+    const [likesCount, setLikesCount] = useState(0);
+    const [localLiked, setLocalLiked] = useState(false);
+    const [localSaved, setLocalSaved] = useState(false);
+    const [justShared, setJustShared] = useState(false);
+
+    useEffect(() => {
+        if (idea) {
+            setLikesCount(idea.likes_count || idea.likes || 0);
+
+            // Check local storage for like/save state
+            const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+            setLocalLiked(likedIdeas.includes(idea.id));
+
+            const savedIdeas = JSON.parse(localStorage.getItem('saved_ideas') || '[]');
+            setLocalSaved(savedIdeas.includes(idea.id));
+        }
+    }, [idea]);
+
     if (!idea) return null;
+
+    // Handlers
+    const handleLike = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const currentLikes = likesCount;
+
+        try {
+            if (localLiked) {
+                // Unlike
+                setLikesCount(prev => Math.max(0, prev - 1));
+                setLocalLiked(false);
+
+                // Update Local Storage
+                const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+                const newLikedIdeas = likedIdeas.filter((id: string) => id !== idea.id);
+                localStorage.setItem('liked_ideas', JSON.stringify(newLikedIdeas));
+
+                // API Call
+                await decrementIdeaLikes(idea.id, currentLikes);
+            } else {
+                // Like
+                setLikesCount(prev => prev + 1);
+                setLocalLiked(true);
+
+                // Update Local Storage
+                const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+                if (!likedIdeas.includes(idea.id)) {
+                    likedIdeas.push(idea.id);
+                    localStorage.setItem('liked_ideas', JSON.stringify(likedIdeas));
+                }
+
+                // API Call
+                await incrementIdeaLikes(idea.id, currentLikes);
+            }
+        } catch (error) {
+            console.error("Error toggling like:", error);
+            // Revert on error
+            setLikesCount(currentLikes);
+            setLocalLiked(!localLiked);
+        }
+    };
+
+    const handleSave = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const savedIdeas = JSON.parse(localStorage.getItem('saved_ideas') || '[]');
+
+        if (localSaved) {
+            // Unsave
+            const newSavedIdeas = savedIdeas.filter((id: string) => id !== idea.id);
+            localStorage.setItem('saved_ideas', JSON.stringify(newSavedIdeas));
+            setLocalSaved(false);
+        } else {
+            // Save
+            if (!savedIdeas.includes(idea.id)) {
+                savedIdeas.push(idea.id);
+                localStorage.setItem('saved_ideas', JSON.stringify(savedIdeas));
+            }
+            setLocalSaved(true);
+        }
+    };
+
+    const handleShare = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const shareUrl = `${window.location.origin}/demo/${idea.slug}`;
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: idea.title,
+                    text: `Check out this idea: ${idea.title}`,
+                    url: shareUrl
+                });
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                setJustShared(true);
+                setTimeout(() => setJustShared(false), 2000);
+            }
+        } catch (error) {
+            console.error("Error sharing:", error);
+        }
+    };
+
+
+    // Extract scores from ai_scores or use defaults
+    const viabilityScore = idea.ai_scores?.viability || idea.validation_score || 75;
+    const innovationScore = idea.ai_scores?.innovation || idea.feasibility_score || 68;
+    const impactScore = idea.ai_scores?.impact || idea.uniqueness_score || 88;
+
+    // Calculate overall score
+    const overallScore = Math.round((viabilityScore + innovationScore + impactScore) / 3);
+
+    // Get score color
+    const getScoreColorHex = (score: number) => {
+        if (score >= 80) return "#10b981";
+        if (score >= 50) return "#eab308";
+        return "#ef4444";
+    };
+
+    const ownerUsername = idea.profiles?.username || idea.owner_username || idea.username || "Anonymous";
+
+    // Truncate description to create curiosity
+    const truncateDescription = (text: string, maxLength: number = 150) => {
+        if (!text) return "";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + "...";
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden glass-card border-border/50">
-                <div className="grid md:grid-cols-2 h-full max-h-[80vh] overflow-y-auto">
-                    {/* Left: Image/Visual */}
-                    <div className={`p-8 flex flex-col justify-between relative overflow-hidden ${idea.color === "primary" ? "bg-primary/5" :
-                        idea.color === "secondary" ? "bg-secondary/5" : "bg-accent/5"
-                        }`}>
-                        <div className="relative z-10">
-                            <Badge variant="outline" className="mb-4 bg-background/50 backdrop-blur-sm">
-                                {idea.category}
-                            </Badge>
-                            <h2 className="text-3xl font-black mb-2 leading-tight">{idea.title}</h2>
-                            <div className="flex items-center gap-2 mb-6">
-                                <div className="flex">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star
-                                            key={i}
-                                            className={`w-4 h-4 ${i < (idea.rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
-                                        />
-                                    ))}
-                                </div>
-                                <span className="text-sm text-muted-foreground">({idea.rating || 0})</span>
-                            </div>
-                        </div>
+            <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden bg-[#0A0A0A] border-primary/30 shadow-2xl [&>button]:hidden">
+                {/* Scrollable Content */}
+                <div className="overflow-y-auto max-h-[85vh]">
+                    <div className="relative p-8 space-y-6">
 
-                        {/* Abstract Visual */}
-                        <div className={`absolute -right-10 -bottom-10 w-64 h-64 rounded-full blur-3xl opacity-50 ${idea.color === "primary" ? "bg-primary" :
-                            idea.color === "secondary" ? "bg-secondary" : "bg-accent"
-                            }`} />
-
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                    <User className="w-5 h-5 text-muted-foreground" />
-                                </div>
-                                <div>
-                                    <div className="text-sm font-medium">Created by</div>
-                                    <div className="text-sm font-bold">{idea.seller}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right: Details */}
-                    <div className="p-8 bg-card">
-                        <DialogHeader className="mb-6">
-                            <DialogTitle className="sr-only">{idea.title}</DialogTitle>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-2xl font-bold">{idea.price}</div>
-                                <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/20">
-                                    Verified
-                                </Badge>
-                            </div>
-                            <p className="text-muted-foreground text-sm">
-                                One-time payment. Includes full IP rights and documentation.
-                            </p>
-                        </DialogHeader>
-
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="font-bold mb-3 flex items-center gap-2">
-                                    <Zap className="w-4 h-4 text-primary" />
-                                    What's Included
-                                </h3>
-                                <ul className="space-y-2">
-                                    {["Business Model Canvas", "Go-to-Market Strategy", "Financial Projections", "Tech Stack Recommendations"].map((item, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                            <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                                            {item}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* Evidence Files Section */}
-                            {idea.evidence_files && idea.evidence_files.length > 0 && (
-                                <div>
-                                    <h3 className="font-bold mb-3 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-primary" />
-                                        Evidence & Documents
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {idea.evidence_files.split(',').map((url: string, i: number) => {
-                                            if (!url.trim()) return null;
-                                            // Extract filename from URL (remove query params and path)
-                                            // Format: .../filename.ext or .../uuid-timestamp-filename.ext
-                                            const rawFileName = url.split('/').pop()?.split('?')[0] || `Document ${i + 1}`;
-                                            // Try to make it more readable by removing the uuid prefix if possible
-                                            // Pattern: uuid-timestamp-filename
-                                            const parts = rawFileName.split('-');
-                                            const displayFileName = parts.length > 2 ? parts.slice(2).join('-') : rawFileName;
-
-                                            return (
-                                                <a
-                                                    key={i}
-                                                    href={url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-2 text-sm text-primary hover:underline p-2 bg-muted/50 rounded-lg transition-colors hover:bg-muted"
-                                                >
-                                                    <FileText className="w-4 h-4 shrink-0" />
-                                                    <span className="truncate">{decodeURIComponent(displayFileName)}</span>
-                                                </a>
-                                            );
-                                        })}
+                        {/* Header Section */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-4"
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 space-y-3">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <Badge
+                                            variant="secondary"
+                                            className="bg-primary/10 text-primary border-primary/20 px-4 py-1.5 text-sm font-bold"
+                                        >
+                                            {idea.category || "General"}
+                                        </Badge>
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                                            <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
+                                            <span className="text-xs font-bold text-primary">{likesCount}</span>
+                                        </div>
                                     </div>
-                                    {idea.evidence_note && (
-                                        <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-primary/20 pl-2">
-                                            "{idea.evidence_note}"
-                                        </p>
-                                    )}
-                                </div>
-                            )}
 
-                            <div>
-                                <h3 className="font-bold mb-3 flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-secondary" />
-                                    Uniqueness Score: {idea.uniqueness}%
-                                </h3>
-                                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-primary to-secondary"
-                                        style={{ width: `${idea.uniqueness}%` }}
-                                    />
+                                    <h2 className="text-3xl md:text-4xl font-black font-outfit text-white leading-tight tracking-tight">
+                                        {idea.title}
+                                    </h2>
+
+                                    {/* Creator Info */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center text-white font-bold text-xs">
+                                            {ownerUsername.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">
+                                                Created By
+                                            </div>
+                                            <div className="font-bold text-sm text-white">
+                                                {ownerUsername}
+                                            </div>
+                                        </div>
+                                        {idea.github_repo_url && (
+                                            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
+                                                <Github className="w-3.5 h-3.5 text-primary" />
+                                                <span className="text-xs font-medium text-white/60">
+                                                    Repo
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    Validated against 50M+ existing businesses and patents.
-                                </p>
+                            </div>
+                        </motion.div>
+
+                        {/* AI Score Section - Simplified */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className="relative p-6 rounded-2xl bg-gradient-to-br from-background/40 to-background/20 backdrop-blur-xl border border-white/10 overflow-hidden"
+                        >
+                            {/* Background Glow */}
+                            <div
+                                className="absolute inset-0 opacity-10 blur-3xl pointer-events-none"
+                                style={{
+                                    background: `radial-gradient(circle at center, ${getScoreColorHex(overallScore)} 0%, transparent 70%)`
+                                }}
+                            />
+
+                            <div className="relative z-10 flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Sparkles className="w-4 h-4 text-primary" />
+                                        <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
+                                            AI Confidence Score
+                                        </h3>
+                                    </div>
+                                    <p className="text-xs text-white/50 max-w-xs">
+                                        Analyzed across 20+ business metrics
+                                    </p>
+                                </div>
+
+                                {/* Overall Score - Compact */}
+                                <div className="flex flex-col items-center">
+                                    <div className="relative w-24 h-24 flex items-center justify-center mb-1">
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle
+                                                cx="48"
+                                                cy="48"
+                                                r="42"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="6"
+                                                className="text-zinc-800"
+                                            />
+                                            <circle
+                                                cx="48"
+                                                cy="48"
+                                                r="42"
+                                                fill="none"
+                                                stroke={getScoreColorHex(overallScore)}
+                                                strokeWidth="6"
+                                                strokeLinecap="round"
+                                                strokeDasharray={`${2 * Math.PI * 42}`}
+                                                strokeDashoffset={`${2 * Math.PI * 42 * (1 - overallScore / 100)}`}
+                                                className="transition-all duration-1000"
+                                                style={{ filter: `drop-shadow(0 0 8px ${getScoreColorHex(overallScore)}80)` }}
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span
+                                                className="text-4xl font-black leading-none"
+                                                style={{ color: getScoreColorHex(overallScore) }}
+                                            >
+                                                {overallScore}
+                                            </span>
+                                            <span className="text-[9px] text-white/40 font-medium">
+                                                /100
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Brief Description */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="space-y-2"
+                        >
+                            <p className="text-sm text-white/70 leading-relaxed">
+                                {truncateDescription(idea.description, 120)}
+                            </p>
+                            {idea.description && idea.description.length > 120 && (
+                                <button
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        navigate(`/demo/${idea.slug}`);
+                                    }}
+                                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                                >
+                                    Read more
+                                    <ChevronRight className="w-3 h-3" />
+                                </button>
+                            )}
+                        </motion.div>
+
+                        {/* Quick Stats - Minimalistic */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10"
+                        >
+                            <div className="flex-1 text-center border-r border-white/10">
+                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                                    Market
+                                </div>
+                                <div className="text-sm font-bold text-white">
+                                    {idea.market_potential || "$10B+"}
+                                </div>
+                            </div>
+                            <div className="flex-1 text-center border-r border-white/10">
+                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                                    Stage
+                                </div>
+                                <div className="text-sm font-bold text-white">
+                                    {idea.hasMVP ? "MVP Ready" : "Concept"}
+                                </div>
+                            </div>
+                            <div className="flex-1 text-center">
+                                <div className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">
+                                    Assets
+                                </div>
+                                <div className="text-sm font-bold text-primary">
+                                    {[idea.github_repo_url, idea.hasMVP, true, true].filter(Boolean).length}+ Included
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Price & CTA */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="space-y-3 pt-2"
+                        >
+                            <div className="flex items-end justify-between">
+                                <div>
+                                    <div className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">
+                                        Asking Price
+                                    </div>
+                                    <div className="text-3xl font-black text-primary font-outfit">
+                                        {idea.price}
+                                    </div>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-white/60 hover:text-primary hover:bg-transparent transition-colors gap-1"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        navigate(`/demo/${idea.slug}`);
+                                    }}
+                                >
+                                    <Eye className="w-4 h-4" />
+                                    See full analysis
+                                </Button>
                             </div>
 
-                            <div className="pt-4 flex gap-3">
+                            <div className="grid grid-cols-2 gap-3 mb-4">
                                 <Button
-                                    className="flex-1 magnetic-btn bg-primary hover:bg-primary/90 glow-purple"
+                                    size="lg"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all group"
                                     onClick={() => {
                                         onOpenChange(false);
                                         window.location.href = `/buy/${idea.slug}`;
                                     }}
                                 >
-                                    Buy Now
+                                    <Award className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                                    Acquire Now
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="border-white/20 text-white hover:bg-white/5 hover:border-primary/50 hover:text-white rounded-xl font-bold transition-all"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        navigate(`/demo/${idea.slug}`);
+                                    }}
+                                >
+                                    View Details
+                                    <ChevronRight className="w-4 h-4 ml-1" />
+                                </Button>
+                            </div>
+
+                            {/* Action Buttons: Like, Save, Share */}
+                            <div className="flex items-center gap-3 pt-2 border-t border-white/5 mx-[-1rem] px-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={`flex-1 border-zinc-800 bg-black/40 hover:bg-zinc-900 transition-colors ${localLiked ? 'text-pink-500 border-pink-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                    onClick={handleLike}
+                                >
+                                    <Heart className={`w-4 h-4 mr-2 ${localLiked ? 'fill-current' : ''}`} />
+                                    {localLiked ? 'Liked' : 'Like'} ({likesCount})
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="flex-1"
-                                    onClick={() => {
-                                        onOpenChange(false);
-                                        window.location.href = `/demo/${idea.slug}`;
-                                    }}
+                                    size="sm"
+                                    className={`flex-1 border-zinc-800 bg-black/40 hover:bg-zinc-900 transition-colors ${localSaved ? 'text-yellow-500 border-yellow-500/20' : 'text-zinc-400 hover:text-white'}`}
+                                    onClick={handleSave}
                                 >
-                                    View Demo
+                                    <Bookmark className={`w-4 h-4 mr-2 ${localSaved ? 'fill-current' : ''}`} />
+                                    {localSaved ? 'Saved' : 'Save'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 border-zinc-800 bg-black/40 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+                                    onClick={handleShare}
+                                >
+                                    {justShared ? (
+                                        <>
+                                            <Check className="w-4 h-4 mr-2 text-green-500" />
+                                            Copied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Share2 className="w-4 h-4 mr-2" />
+                                            Share
+                                        </>
+                                    )}
                                 </Button>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </DialogContent>

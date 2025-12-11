@@ -1,256 +1,217 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, ChevronDown, Lightbulb, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState, useRef, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { User, ChevronDown, UserCircle, LogOut, Lightbulb } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import UserMenu from "@/components/auth/UserMenu";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getProxiedAvatarUrl } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
     }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
 
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  // Fetch user profile avatar
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location]);
+    const fetchAvatar = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        if (data && !error) {
+          setAvatarUrl(data.avatar_url);
+        }
+      } catch (error) {
+        console.error("Error fetching avatar:", error);
+      }
+    };
+
+    fetchAvatar();
+  }, [user]);
+
+  // Helper to check active state
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 border-b ${isScrolled || isMobileMenuOpen
-        ? "bg-background/70 backdrop-blur-xl border-border/40 shadow-sm"
-        : "bg-transparent border-transparent"
-        }`}
+      className={`
+        fixed top-0 left-0 right-0 z-50 
+        flex items-center justify-between 
+        px-6 py-4 md:px-12
+        bg-zinc-950/60 backdrop-blur-md border-b border-white/5
+        transition-all duration-700
+      `}
     >
-      <div className="container mx-auto px-4 lg:px-6">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group relative z-10">
-            <div className="relative w-10 h-10 flex items-center justify-center bg-gradient-to-br from-primary to-emerald-500 rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-primary/25">
-              <Lightbulb className="w-6 h-6 text-white" />
-              <div className="absolute -inset-1 bg-primary/40 blur-lg rounded-xl dark:opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </div>
-            <span className="text-2xl font-black tracking-tight font-outfit">
-              ida<span className="text-primary">.</span>
-            </span>
-          </Link>
+      {/* Left: Logo */}
+      <Link to="/" className="flex items-center select-none w-32 focus:outline-none group">
+        <span className="text-4xl text-white font-handwritten font-bold tracking-tight pb-1 group-hover:text-[#22c55e] transition-colors duration-300 cursor-pointer">
+          ida.
+        </span>
+      </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 bg-secondary/50 backdrop-blur-md p-1.5 rounded-full border border-border/50">
-            <Link
-              to="/marketplace"
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${location.pathname === "/marketplace"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
-            >
-              Marketplace
-            </Link>
+      {/* Center: Main Navigation Links */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center space-x-10">
+        <Link
+          to="/marketplace"
+          className={`relative tracking-wide transition-all duration-300 ${isActive('/marketplace') ? 'text-green-400 font-medium text-base' : 'text-zinc-300 hover:text-white font-normal text-sm group'}`}
+        >
+          Marketplace
+          {isActive('/marketplace') ? (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+          ) : (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-zinc-700/50 rounded-full group-hover:bg-white/50 transition-colors"></span>
+          )}
+        </Link>
+        <Link
+          to="/submit-idea"
+          className={`relative tracking-wide transition-all duration-300 ${isActive('/submit-idea') ? 'text-green-400 font-medium text-base' : 'text-zinc-300 hover:text-white font-normal text-sm group'}`}
+        >
+          Sell Your Idea
+          {isActive('/submit-idea') ? (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+          ) : (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-zinc-700/50 rounded-full group-hover:bg-white/50 transition-colors"></span>
+          )}
+        </Link>
+        <Link
+          to="/how-it-works"
+          className={`relative tracking-wide transition-all duration-300 ${isActive('/how-it-works') ? 'text-green-400 font-medium text-base' : 'text-zinc-300 hover:text-white font-normal text-sm group'}`}
+        >
+          How It Works
+          {isActive('/how-it-works') ? (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+          ) : (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-zinc-700/50 rounded-full group-hover:bg-white/50 transition-colors"></span>
+          )}
+        </Link>
+        <Link
+          to="/digital-solutions"
+          className={`relative tracking-wide transition-all duration-300 ${isActive('/digital-solutions') ? 'text-green-400 font-medium text-base' : 'text-zinc-300 hover:text-white font-normal text-sm group'}`}
+        >
+          Digital Solutions
+          {isActive('/digital-solutions') ? (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+          ) : (
+            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 bg-zinc-700/50 rounded-full group-hover:bg-white/50 transition-colors"></span>
+          )}
+        </Link>
+      </div>
+
+      {/* Right: Actions */}
+      <div className="flex items-center justify-end space-x-6 w-auto md:w-auto">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
+        {!user ? (
+          <>
             <Link
               to="/submit-idea"
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${location.pathname === "/submit-idea"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+              className="group relative text-xs font-medium text-zinc-500 hover:text-green-400 transition-colors duration-300 uppercase tracking-wider hidden sm:block"
             >
-              Sell Idea
+              Start Selling
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-green-400 transition-all duration-300 ease-out group-hover:w-full"></span>
             </Link>
+
             <Link
-              to="/how-it-works"
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${location.pathname === "/how-it-works"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+              to="/login"
+              className="px-5 py-2 text-sm font-semibold text-black bg-white rounded-full hover:bg-zinc-200 transition-colors shadow-lg shadow-white/5 whitespace-nowrap"
             >
-              How It Works
+              Log in
             </Link>
-          </div>
+          </>
+        ) : (
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 rounded-full hover:bg-zinc-800 transition-colors focus:outline-none"
+            >
+              <Avatar className="w-9 h-9 border border-white/10 transition-all duration-300 hover:border-green-500/50">
+                <AvatarImage src={getProxiedAvatarUrl(avatarUrl || user.user_metadata?.avatar_url)} alt="User" />
+                <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
+                  {user.email?.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="relative hidden lg:block group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              <input
-                type="text"
-                placeholder="Search ideas..."
-                className="h-10 w-64 rounded-xl bg-secondary/50 border border-transparent hover:border-border focus:border-primary/50 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:w-72 focus:ring-2 focus:ring-primary/10"
-              />
-            </div>
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* User Info */}
+                <div className="px-4 py-3 border-b border-white/5">
+                  <p className="text-sm font-medium text-white truncate">{user.email}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Signed in</p>
+                </div>
 
-            <div className="w-px h-6 bg-border/50 mx-2" />
-            <ThemeToggle />
+                {/* Menu Items */}
+                <div className="py-2">
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center gap-3"
+                  >
+                    <User className="w-5 h-5" />
+                    Profile
+                  </button>
 
-            {user ? (
-              <UserMenu />
-            ) : (
-              <div className="flex items-center gap-3 ml-2">
-                <Link to="/login" className="text-sm font-medium hover:text-primary transition-colors">
-                  Sign In
-                </Link>
-                <Button className="rounded-xl px-6 font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300" asChild>
-                  <Link to="/signup">Get Started</Link>
-                </Button>
+                  <button
+                    onClick={() => {
+                      navigate('/profile?tab=my-ideas'); // Link to My Ideas tab
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors flex items-center gap-3"
+                  >
+                    <Lightbulb className="w-5 h-5" />
+                    My Ideas
+                  </button>
+
+                  <div className="border-t border-white/5 my-2"></div>
+
+                  <button
+                    onClick={async () => {
+                      setIsDropdownOpen(false);
+                      await signOut();
+                      navigate('/login');
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-zinc-800 hover:text-red-300 transition-colors flex items-center gap-3"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Log Out
+                  </button>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-foreground relative z-[120] rounded-lg hover:bg-secondary transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 top-0 bg-black/80 backdrop-blur-sm z-[100] md:hidden"
-            />
-
-            {/* Menu Content */}
-            <motion.div
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-background border-l border-border z-[110] md:hidden flex flex-col shadow-2xl overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-border">
-                <h2 className="text-xl font-black font-outfit">Menu</h2>
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <nav className="flex flex-col gap-2">
-                  <Link
-                    to="/marketplace"
-                    className="flex items-center gap-3 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium min-h-[48px]"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Marketplace
-                  </Link>
-                  <Link
-                    to="/submit-idea"
-                    className="flex items-center gap-3 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium min-h-[48px]"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Sell Idea
-                  </Link>
-                  <Link
-                    to="/how-it-works"
-                    className="flex items-center gap-3 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium min-h-[48px]"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    How It Works
-                  </Link>
-                  <Link
-                    to="/about"
-                    className="flex items-center gap-3 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium min-h-[48px]"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    About
-                  </Link>
-                  <Link
-                    to="/contact"
-                    className="flex items-center gap-3 px-4 py-4 rounded-xl hover:bg-secondary transition-colors text-lg font-medium min-h-[48px]"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Contact
-                  </Link>
-                </nav>
-
-                <div className="my-6 border-t border-border" />
-
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm font-medium text-muted-foreground">Theme</span>
-                  <ThemeToggle />
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="p-6 border-t border-border bg-secondary/30">
-                {user ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-background">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {user.email?.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">My Account</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                      </div>
-                    </div>
-                    <Button className="w-full h-12 rounded-xl" asChild>
-                      <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
-                        Profile Dashboard
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <Button variant="outline" className="w-full h-12 rounded-xl border-2" asChild>
-                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                        Sign In
-                      </Link>
-                    </Button>
-                    <Button className="w-full h-12 rounded-xl shadow-lg shadow-primary/25" asChild>
-                      <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                        Get Started
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </>
         )}
-      </AnimatePresence>
+      </div>
     </nav>
   );
 };

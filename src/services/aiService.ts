@@ -1,5 +1,6 @@
 // @ts-ignore
 declare const puter: any;
+import { CATEGORIES } from "@/constants/marketplace";
 
 export interface AIValidationResult {
   metrics: {
@@ -150,5 +151,49 @@ export const validateIdea = async (ideaData: any): Promise<AIValidationResult> =
   } catch (e) {
     console.error("JSON Parse Error:", e);
     throw new Error("Received invalid data from AI. Please retry.");
+  }
+  // ... existing imports ...
+  // (We'll clean up the imports at the top in a separate edit or assume they are there, 
+  // but here we just need to remove the mid-file import and Ensure validateIdea ends)
+};
+
+// START suggestCategory
+export const suggestCategory = async (title: string, description: string): Promise<string> => {
+  console.log("🤖 AI Suggesting Category...");
+
+  let puterInstance;
+  try {
+    puterInstance = await loadPuterJs();
+  } catch (e) {
+    console.error("Puter load failed:", e);
+    return "Technology & Software"; // Fallback
+  }
+
+  const prompt = `
+    You are an expert taxonomist.
+    Given the following business Idea Title and Description, select the ONE most appropriate category from the exact list provided below.
+    Do not output anything else. Just the category name exactly as written.
+
+    List of Categories:
+    ${CATEGORIES.join('\n')}
+
+    Title: ${title}
+    Description: ${description}
+  `;
+
+  try {
+    const response = await puterInstance.ai.chat(prompt, { model: 'gpt-4o-mini' });
+    const content = typeof response === 'string' ? response
+      : response?.message?.content
+        ? response.message.content
+        : response?.content;
+
+    const cat = content?.trim().replace(/^['"]|['"]$/g, '') || "";
+    const exactMatch = CATEGORIES.find(c => c.toLowerCase() === cat.toLowerCase().replace(/\.$/, ''));
+
+    return exactMatch || "Technology & Software";
+  } catch (error) {
+    console.error("AI Category suggestion error:", error);
+    return "Technology & Software";
   }
 };

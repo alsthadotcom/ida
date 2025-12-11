@@ -19,6 +19,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const SubmitIdea = lazy(() => import("./pages/SubmitIdea"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const DigitalSolutions = lazy(() => import("./pages/DigitalSolutions"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Blog = lazy(() => import("./pages/Blog"));
@@ -108,6 +109,7 @@ const App = () => (
                     }
                   />
                   <Route path="/how-it-works" element={<HowItWorks />} />
+                  <Route path="/digital-solutions" element={<DigitalSolutions />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/blog" element={<Blog />} />

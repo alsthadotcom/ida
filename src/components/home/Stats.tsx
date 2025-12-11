@@ -9,6 +9,7 @@ const Stats = () => {
         creatorsCount: 0,
         totalValue: 0,
         avgSatisfaction: 0,
+        soldCount: 0,
     });
     const [loading, setLoading] = useState(true);
 
@@ -47,16 +48,16 @@ const Stats = () => {
             color: "secondary",
         },
         {
+            icon: Shield,
+            value: loading ? "..." : formatNumber(statsData.soldCount),
+            label: "Total Ideas Sold",
+            color: "primary",
+        },
+        {
             icon: Zap,
             value: loading ? "..." : formatCurrency(statsData.totalValue),
             label: "Total Listing Value",
-            color: "accent",
-        },
-        {
-            icon: Shield,
-            value: loading ? "..." : statsData.avgSatisfaction + "%",
-            label: "Satisfaction Rate",
-            color: "primary",
+            color: "primary-green",
         },
     ];
 
@@ -82,12 +83,15 @@ const Stats = () => {
                                         ? "text-primary"
                                         : stat.color === "secondary"
                                             ? "text-emerald-400"
-                                            : "text-accent"
+                                            : stat.color === "primary-green"
+                                                ? "text-primary"
+                                                : "text-accent"
                                         }`}
                                 />
                             </div>
                             <div className={`text-4xl md:text-5xl font-black mb-2 ${stat.color === 'primary' ? 'text-foreground' :
-                                    stat.color === 'secondary' ? 'text-foreground' :
+                                stat.color === 'secondary' ? 'text-foreground' :
+                                    stat.color === 'primary-green' ? 'text-primary' :
                                         'text-transparent bg-clip-text bg-gradient-to-r from-accent to-orange-400'
                                 }`}>
                                 {stat.value}

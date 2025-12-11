@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
     User, Mail, Calendar, MapPin, Briefcase, Link as LinkIcon,
@@ -23,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { getProxiedAvatarUrl } from "@/lib/utils";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { useNavigate, useParams } from "react-router-dom";
+
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -97,6 +98,14 @@ interface Idea {
     badge?: string;
 }
 
+const StatsCard = ({ icon: Icon, label, value, subIcon: SubIcon }: any) => (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-zinc-900 transition-colors group">
+        <Icon className="w-6 h-6 text-green-500 mb-3 group-hover:scale-110 transition-transform" />
+        <div className="text-3xl font-bold text-white mb-1">{value}</div>
+        <div className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{label}</div>
+    </div>
+);
+
 const Profile = () => {
     const { user, signOut, isAdmin } = useAuth();
     const navigate = useNavigate();
@@ -105,7 +114,7 @@ const Profile = () => {
     const isOwnProfile = !userId || userId === user?.id;
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState(isOwnProfile ? "details" : "ideas");
 
     // Profile data
     const [profile, setProfile] = useState<UserProfile>({
@@ -152,6 +161,26 @@ const Profile = () => {
     // Prevent double-loading
     const isLoadingRef = useRef(false);
 
+    // Parse query params for tab switching
+    const location = useLocation();
+
+    useEffect(() => {
+        if (loading) return;
+
+        const params = new URLSearchParams(location.search);
+        const tabParam = params.get("tab");
+        if (tabParam === "my-ideas") {
+            setActiveTab("ideas");
+            // Scroll 75% of the screen height
+            setTimeout(() => {
+                window.scrollTo({
+                    top: window.innerHeight * 0.75,
+                    behavior: "smooth"
+                });
+            }, 500);
+        }
+    }, [location.search, loading]);
+
     useEffect(() => {
         if (!user && !userId) {
             navigate("/login");
@@ -160,7 +189,7 @@ const Profile = () => {
 
         // Prevent calling loadProfileData if already loading
         if (isLoadingRef.current) {
-            console.log("⏭️ Skipping duplicate loadProfileData call");
+            // console.log("⏭️ Skipping duplicate loadProfileData call");
             return;
         }
 
@@ -169,7 +198,7 @@ const Profile = () => {
 
     const loadProfileData = async () => {
         if (isLoadingRef.current) {
-            console.log("⏭️ Already loading, skipping...");
+            // console.log("⏭️ Already loading, skipping...");
             return;
         }
 
@@ -179,7 +208,7 @@ const Profile = () => {
 
             // Determine which user's profile to load
             const targetUserId = userId || user?.id;
-            console.log("👤 Current user ID:", user?.id, "| Target ID:", targetUserId);
+            // console.log("👤 Current user ID:", user?.id, "| Target ID:", targetUserId);
             if (!targetUserId) return;
 
             // Load profile from Supabase
@@ -216,14 +245,14 @@ const Profile = () => {
             }
 
             // Load user's submitted ideas
-            console.log("🔍 Loading ideas for user:", targetUserId);
+            // console.log("🔍 Loading ideas for user:", targetUserId);
             const { data: ideasData, error: ideasError } = await supabase
                 .from("ideas")
                 .select("*")
                 .eq("user_id", targetUserId)
                 .order("created_at", { ascending: false });
 
-            console.log("📊 Ideas query result:", { ideasData, ideasError, count: ideasData?.length });
+            // console.log("📊 Ideas query result:", { ideasData, ideasError, count: ideasData?.length });
 
             if (ideasError) {
                 console.error("❌ Error loading ideas:", ideasError);
@@ -233,7 +262,7 @@ const Profile = () => {
                     variant: "destructive"
                 });
             } else if (ideasData) {
-                console.log("✅ Ideas data received:", ideasData);
+                // console.log("✅ Ideas data received:", ideasData);
                 const ideas: Idea[] = ideasData.map((idea) => ({
                     id: idea.id,
                     title: idea.title,
@@ -255,7 +284,7 @@ const Profile = () => {
                     new Map(ideas.map(idea => [idea.id, idea])).values()
                 );
 
-                console.log("🎯 Mapped ideas:", uniqueIdeas);
+                // console.log("🎯 Mapped ideas:", uniqueIdeas);
                 setMyIdeas(uniqueIdeas);
 
                 // Calculate stats
@@ -803,163 +832,130 @@ const Profile = () => {
                 >
                     <Card className="glass-card mb-8">
                         <CardContent className="p-8">
+                            {/* Edit Profile Button (Top Right) */}
+                            {isOwnProfile && (
+                                <div className="absolute top-6 right-6 z-20">
+                                    {isEditing ? (
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" onClick={handleEditToggle} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+                                                Cancel
+                                            </Button>
+                                            <Button size="sm" onClick={handleSaveProfile} className="bg-green-600 hover:bg-green-700 text-white">
+                                                <Save className="w-4 h-4 mr-2" />
+                                                Save Changes
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleEditToggle}
+                                            className="border-zinc-800 bg-zinc-900/50 text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors"
+                                        >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Edit Profile
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex flex-col md:flex-row gap-8">
                                 {/* Avatar Section */}
-                                <div className="flex flex-col items-center md:items-start">
+                                <div className="flex flex-col items-center md:items-start gap-4 shrink-0">
                                     <div className="relative group">
-                                        <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
-                                            <AvatarImage src={getProxiedAvatarUrl(profile.avatar_url)} alt={profile.full_name} />
-                                            <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary to-secondary text-primary-foreground">
+                                        {/* Animated ring around avatar */}
+                                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-primary/50 to-primary animate-spin" style={{ padding: '3px', animationDuration: '3s' }}>
+                                            <div className="w-full h-full rounded-full bg-background"></div>
+                                        </div>
+
+                                        <Avatar className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background shadow-2xl">
+                                            <AvatarImage src={getProxiedAvatarUrl(isEditing ? editedProfile.avatar_url : profile.avatar_url) || ""} className="object-cover" />
+                                            <AvatarFallback className="text-4xl bg-zinc-800 text-zinc-400">
                                                 {getInitials(profile.full_name, profile.email)}
                                             </AvatarFallback>
                                         </Avatar>
 
-                                        {/* KYC Verification Badge */}
+                                        {/* KYC Badge on Avatar */}
                                         {profile.kyc_status === 'approved' && (
-                                            <div className="absolute bottom-0 right-0 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center border-4 border-background shadow-lg">
-                                                <CheckCircle2 className="w-6 h-6 text-white" />
+                                            <div className="absolute bottom-2 right-2 bg-black rounded-full p-1.5">
+                                                <BadgeCheck className="w-7 h-7 text-green-500 fill-green-500" />
                                             </div>
                                         )}
-                                        {(profile.kyc_status === 'rejected' || profile.kyc_status === 'pending' || profile.kyc_status === 'none') && (
-                                            <div className={`absolute bottom-0 right-0 w-10 h-10 rounded-full flex items-center justify-center border-4 border-background shadow-lg ${profile.kyc_status === 'pending' ? 'bg-yellow-500' :
-                                                    profile.kyc_status === 'none' ? 'bg-gray-500' : 'bg-red-500'
-                                                }`}>
-                                                {profile.kyc_status === 'pending' ? (
-                                                    <Clock className="w-6 h-6 text-white" />
-                                                ) : (
-                                                    <XCircle className="w-6 h-6 text-white" />
-                                                )}
+                                        {profile.kyc_status === 'pending' && (
+                                            <div className="absolute bottom-2 right-2 bg-black rounded-full p-1.5">
+                                                <Clock className="w-7 h-7 text-yellow-500" />
+                                            </div>
+                                        )}
+                                        {profile.kyc_status === 'rejected' && (
+                                            <div className="absolute bottom-2 right-2 bg-black rounded-full p-1.5">
+                                                <XCircle className="w-7 h-7 text-red-500" />
                                             </div>
                                         )}
 
-                                        {isOwnProfile && (
-                                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                <Camera className="w-8 h-8 text-white" />
-                                                <input
+                                        {isEditing && (
+                                            <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => document.getElementById('avatar-upload')?.click()}>
+                                                <Camera className="w-8 h-8 text-white/80" />
+                                                <Input
+                                                    id="avatar-upload"
                                                     type="file"
-                                                    accept="image/*"
                                                     className="hidden"
+                                                    accept="image/*"
                                                     onChange={handleAvatarUpload}
                                                 />
-                                            </label>
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+
+                                    <div className="flex items-center gap-2 text-primary text-sm">
                                         <Calendar className="w-4 h-4" />
-                                        Joined {formatDate(profile.created_at)}
+                                        <span>Joined {new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                                     </div>
                                 </div>
 
-                                {/* Profile Info */}
-                                <div className="flex-1">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            {isEditing ? (
-                                                <div className="space-y-3">
-                                                    <Input
-                                                        value={editedProfile.full_name}
-                                                        onChange={(e) =>
-                                                            setEditedProfile({ ...editedProfile, full_name: e.target.value })
-                                                        }
-                                                        placeholder="Full Name"
-                                                        className="text-2xl font-bold h-auto py-2"
-                                                    />
-                                                    <Input
-                                                        value={editedProfile.username}
-                                                        onChange={(e) =>
-                                                            setEditedProfile({ ...editedProfile, username: e.target.value })
-                                                        }
-                                                        placeholder="@username"
-                                                        className="text-sm"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
-                                                        {profile.full_name || profile.email.split('@')[0]}
-                                                        {profile.kyc_status === 'approved' && (
-                                                            <BadgeCheck className="w-6 h-6 text-blue-500" fill="currentColor" color="white" />
-                                                        )}
-                                                    </h1>
-                                                    {profile.username && (
-                                                        <p className="text-muted-foreground">@{profile.username}</p>
-                                                    )}
-                                                </>
+                                {/* Info Section */}
+                                <div className="flex-1 space-y-6 text-center md:text-left">
+                                    <div>
+                                        <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+                                            <h1 className="text-3xl md:text-4xl font-bold text-white font-outfit">
+                                                {profile.full_name || profile.username || "Anonymous User"}
+                                            </h1>
+                                            {/* Verification Badge next to Name */}
+                                            {profile.kyc_status === 'approved' && (
+                                                <BadgeCheck className="w-7 h-7 text-green-500" />
+                                            )}
+                                            {profile.kyc_status === 'pending' && (
+                                                <Clock className="w-6 h-6 text-yellow-500" />
+                                            )}
+                                            {profile.kyc_status === 'rejected' && (
+                                                <XCircle className="w-6 h-6 text-red-500" />
                                             )}
                                         </div>
-                                        {isOwnProfile && (
-                                            <div className="flex gap-2">
-                                                {isEditing ? (
-                                                    <>
-                                                        <Button size="sm" onClick={handleSaveProfile} className="gap-2">
-                                                            <Save className="w-4 h-4" />
-                                                            Save
-                                                        </Button>
-                                                        <Button size="sm" variant="outline" onClick={handleEditToggle} className="gap-2">
-                                                            <X className="w-4 h-4" />
-                                                            Cancel
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <Button size="sm" variant="outline" onClick={handleEditToggle} className="gap-2">
-                                                        <Edit className="w-4 h-4" />
-                                                        Edit Profile
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        )}
+                                        <p className="text-primary font-medium">@{profile.username || "username"}</p>
                                     </div>
 
                                     {/* Bio */}
-                                    <div className="mb-4">
-                                        <Label className="text-muted-foreground mb-1 block">Bio</Label>
+                                    <div className="space-y-1">
+                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wide">Bio</h3>
                                         {isEditing ? (
                                             <Textarea
                                                 value={editedProfile.bio}
-                                                onChange={(e) =>
-                                                    setEditedProfile({ ...editedProfile, bio: e.target.value })
-                                                }
-                                                placeholder="Tell us about yourself"
-                                                className="min-h-[100px]"
+                                                onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })}
+                                                className="bg-zinc-900 border-zinc-800 focus:border-green-500/50 text-zinc-200 min-h-[100px]"
+                                                placeholder="Tell us about yourself..."
                                             />
                                         ) : (
-                                            <p className="text-lg leading-relaxed text-foreground/90">
+                                            <p className="text-zinc-300 leading-relaxed max-w-2xl">
                                                 {profile.bio || "No bio yet."}
                                             </p>
                                         )}
                                     </div>
 
-                                    {/* Qualifications */}
-                                    <div className="mb-6">
-                                        <Label className="text-muted-foreground mb-1 block">Qualifications</Label>
-                                        {isEditing ? (
-                                            <Textarea
-                                                value={editedProfile.qualifications}
-                                                onChange={(e) =>
-                                                    setEditedProfile({ ...editedProfile, qualifications: e.target.value })
-                                                }
-                                                placeholder="List your degrees, certifications, and skills..."
-                                                className="min-h-[80px]"
-                                            />
-                                        ) : (
-                                            <p className="text-base text-foreground/80 whitespace-pre-wrap">
-                                                {profile.qualifications || "No qualifications listed."}
-                                            </p>
-                                        )}
-                                    </div>
 
-                                    {/* Profile Details */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                                    {/* Contact & Extra Details */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4">
                                         {isEditing ? (
                                             <>
-                                                <div className="flex items-center gap-2">
-                                                    <Mail className="w-4 h-4 text-muted-foreground" />
-                                                    <Input
-                                                        value={profile.email}
-                                                        disabled
-                                                        className="flex-1"
-                                                    />
-                                                </div>
                                                 <div className="flex items-center gap-2">
                                                     <MapPin className="w-4 h-4 text-muted-foreground" />
                                                     <Input
@@ -968,7 +964,7 @@ const Profile = () => {
                                                             setEditedProfile({ ...editedProfile, location: e.target.value })
                                                         }
                                                         placeholder="Location"
-                                                        className="flex-1"
+                                                        className="flex-1 bg-zinc-900"
                                                     />
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -979,7 +975,7 @@ const Profile = () => {
                                                             setEditedProfile({ ...editedProfile, occupation: e.target.value })
                                                         }
                                                         placeholder="Occupation"
-                                                        className="flex-1"
+                                                        className="flex-1 bg-zinc-900"
                                                     />
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -990,737 +986,277 @@ const Profile = () => {
                                                             setEditedProfile({ ...editedProfile, website: e.target.value })
                                                         }
                                                         placeholder="Website"
-                                                        className="flex-1"
+                                                        className="flex-1 bg-zinc-900"
                                                     />
                                                 </div>
                                             </>
                                         ) : (
                                             <>
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <Mail className="w-4 h-4 text-muted-foreground" />
-                                                    <span>{profile.email}</span>
-                                                </div>
                                                 {profile.location && (
-                                                    <div className="flex items-center gap-2 text-sm">
-                                                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                                                    <div className="flex items-center gap-2 text-zinc-400">
+                                                        <MapPin className="w-4 h-4" />
                                                         <span>{profile.location}</span>
                                                     </div>
                                                 )}
                                                 {profile.occupation && (
-                                                    <div className="flex items-center gap-2 text-sm">
-                                                        <Briefcase className="w-4 h-4 text-muted-foreground" />
+                                                    <div className="flex items-center gap-2 text-zinc-400">
+                                                        <Briefcase className="w-4 h-4" />
                                                         <span>{profile.occupation}</span>
                                                     </div>
                                                 )}
                                                 {profile.website && (
-                                                    <div className="flex items-center gap-2 text-sm">
-                                                        <LinkIcon className="w-4 h-4 text-muted-foreground" />
-                                                        <a
-                                                            href={profile.website}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            {profile.website}
+                                                    <div className="flex items-center gap-2 text-zinc-400">
+                                                        <LinkIcon className="w-4 h-4" />
+                                                        <a href={profile.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                                            Website
                                                         </a>
                                                     </div>
                                                 )}
                                             </>
                                         )}
                                     </div>
-
-                                    {/* Certificates Section - Redesigned */}
-                                    <div className="mt-6">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h3 className="text-base font-semibold flex items-center gap-2">
-                                                <Award className="w-4 h-4 text-primary" />
-                                                Certificates & Achievements
-                                            </h3>
-                                            {isEditing && editedProfile.certificates.length < 3 && (
-                                                <div className="relative">
-                                                    <input
-                                                        type="file"
-                                                        accept=".pdf,.jpg,.jpeg,.png"
-                                                        className="hidden"
-                                                        id="cert-upload"
-                                                        onChange={handleCertificateUpload}
-                                                    />
-                                                    <label
-                                                        htmlFor="cert-upload"
-                                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors"
-                                                    >
-                                                        <Plus className="w-3 h-3" />
-                                                        Add
-                                                    </label>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {profile.certificates.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {profile.certificates.map((cert) => (
-                                                    <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50 hover:bg-card transition-colors group">
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0">
-                                                                <FileCheck className="w-4 h-4" />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <a
-                                                                    href={cert.url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="font-medium text-sm hover:underline hover:text-primary transition-colors truncate block"
-                                                                >
-                                                                    {cert.name}
-                                                                </a>
-                                                                <p className="text-xs text-muted-foreground">{formatDate(cert.date)}</p>
-                                                            </div>
-                                                        </div>
-                                                        {isEditing && (
-                                                            <button
-                                                                onClick={() => handleDeleteCertificate(cert.id)}
-                                                                className="p-1.5 hover:bg-destructive/10 rounded-md transition-colors text-destructive opacity-0 group-hover:opacity-100"
-                                                            >
-                                                                <XIcon className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground italic py-2">No certificates uploaded yet.</p>
-                                        )}
-                                    </div>
-
-                                    {/* KYC Section - Redesigned */}
-                                    {isOwnProfile && (
-                                        <div className="mt-6 pt-6 border-t border-border">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-base font-semibold flex items-center gap-2">
-                                                    <Shield className="w-4 h-4 text-green-500" />
-                                                    Identity Verification
-                                                </h3>
-                                                <Badge className={`text-xs ${profile.kyc_status === 'approved' ? 'bg-green-500 hover:bg-green-600' :
-                                                    profile.kyc_status === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600' :
-                                                        profile.kyc_status === 'rejected' ? 'bg-red-500 hover:bg-red-600' :
-                                                            'bg-gray-500 hover:bg-gray-600'
-                                                    }`}>
-                                                    {profile.kyc_status.toUpperCase()}
-                                                </Badge>
-                                            </div>
-
-                                            <div className="p-4 rounded-lg border bg-card/30">
-                                                <p className="text-xs text-muted-foreground mb-3">
-                                                    {profile.kyc_status === 'approved' && 'You are a verified seller.'}
-                                                    {profile.kyc_status === 'pending' && 'Verification in progress. We\'ll notify you soon.'}
-                                                    {profile.kyc_status === 'rejected' && profile.rejection_reason}
-                                                    {profile.kyc_status === 'none' && 'Verify your identity to build trust with buyers.'}
-                                                </p>
-
-                                                {(profile.kyc_status === 'none' || profile.kyc_status === 'rejected') && (
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white">
-                                                                Complete KYC
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent>
-                                                            <DialogHeader>
-                                                                <DialogTitle>Complete Identity Verification</DialogTitle>
-                                                                <DialogDescription>
-                                                                    Upload a valid government-issued ID (Passport, Driver's License, or National ID) to verify your account.
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-
-                                                            <div className="space-y-4 py-4">
-                                                                {editedProfile.kyc_documents && editedProfile.kyc_documents.length > 0 && (
-                                                                    <div className="flex items-center gap-2 p-3 bg-secondary/20 rounded-lg border border-border">
-                                                                        <FileText className="w-4 h-4 text-primary" />
-                                                                        <span className="text-sm truncate flex-1">Document Uploaded</span>
-                                                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="flex flex-col gap-3">
-                                                                    <div className="relative">
-                                                                        <input
-                                                                            type="file"
-                                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                                            className="hidden"
-                                                                            id="kyc-upload-modal"
-                                                                            onChange={handleKYCUpload}
-                                                                        />
-                                                                        <label
-                                                                            htmlFor="kyc-upload-modal"
-                                                                            className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-input hover:border-primary/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
-                                                                        >
-                                                                            <Upload className="w-8 h-8 text-muted-foreground" />
-                                                                            <span className="text-sm font-medium text-muted-foreground">Click to upload document</span>
-                                                                            <span className="text-xs text-muted-foreground/60">(PDF, JPG, PNG up to 10MB)</span>
-                                                                        </label>
-                                                                    </div>
-
-                                                                    <Button
-                                                                        onClick={submitKYCVerification}
-                                                                        disabled={!editedProfile.kyc_documents || editedProfile.kyc_documents.length === 0}
-                                                                        className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                                                    >
-                                                                        Submit Verification Request
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Stats Grid */}
-                            <Separator className="my-6" />
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                <div className="text-center p-4 rounded-lg bg-primary/5 border border-primary/10">
-                                    <div className="flex items-center justify-center mb-2">
-                                        <Lightbulb className="w-5 h-5 text-primary" />
-                                    </div>
-                                    <div className="text-2xl font-bold">{stats.ideasSubmitted}</div>
-                                    <div className="text-xs text-muted-foreground">Ideas Submitted</div>
-                                </div>
-                                <div className="text-center p-4 rounded-lg bg-secondary/5 border border-secondary/10">
-                                    <div className="flex items-center justify-center mb-2">
-                                        <ShoppingBag className="w-5 h-5 text-secondary" />
-                                    </div>
-                                    <div className="text-2xl font-bold">{stats.ideasPurchased}</div>
-                                    <div className="text-xs text-muted-foreground">Ideas Purchased</div>
-                                </div>
-                                <div className="text-center p-4 rounded-lg bg-accent/5 border border-accent/10">
-                                    <div className="flex items-center justify-center mb-2">
-                                        <DollarSign className="w-5 h-5 text-accent" />
-                                    </div>
-                                    <div className="text-2xl font-bold">${stats.totalEarnings}</div>
-                                    <div className="text-xs text-muted-foreground">Total Earnings</div>
-                                </div>
-                                <div className="text-center p-4 rounded-lg bg-primary/5 border border-primary/10">
-                                    <div className="flex items-center justify-center mb-2">
-                                        <Eye className="w-5 h-5 text-primary" />
-                                    </div>
-                                    <div className="text-2xl font-bold">{stats.totalViews}</div>
-                                    <div className="text-xs text-muted-foreground">Total Views</div>
-                                </div>
-                                <div className="text-center p-4 rounded-lg bg-secondary/5 border border-secondary/10">
-                                    <div className="flex items-center justify-center mb-2">
-                                        <Heart className="w-5 h-5 text-secondary" />
-                                    </div>
-                                    <div className="text-2xl font-bold">{stats.totalLikes}</div>
-                                    <div className="text-xs text-muted-foreground">Total Likes</div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                 </motion.div>
 
+                {/* Stats Row */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+                    <StatsCard icon={Lightbulb} label="Ideas Submitted" value={stats.ideasSubmitted} />
+                    <StatsCard icon={ShoppingBag} label="Ideas Purchased" value={purchasedIdeas.length} />
+                    <StatsCard icon={DollarSign} label="Total Earnings" value={`$${stats.totalEarnings}`} />
+                    <StatsCard icon={Eye} label="Total Views" value={stats.totalViews} />
+                    <StatsCard icon={Heart} label="Total Likes" value={stats.totalLikes} />
+                </div>
+
                 {/* Tabs Section */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-                        <TabsTrigger value="overview" className="gap-2">
-                            <TrendingUp className="w-4 h-4" />
-                            Overview
-                        </TabsTrigger>
-                        <TabsTrigger value="my-ideas" className="gap-2">
-                            <Lightbulb className="w-4 h-4" />
-                            My Ideas
-                        </TabsTrigger>
-                        {isOwnProfile && (
-                            <>
-                                <TabsTrigger value="purchased" className="gap-2">
-                                    <ShoppingBag className="w-4 h-4" />
-                                    Purchased
+                <Tabs id="profile-tabs" value={activeTab} onValueChange={setActiveTab} className="mt-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <TabsList className="bg-zinc-900/50 border border-zinc-800 p-1 rounded-xl h-auto">
+                            {isOwnProfile && (
+                                <TabsTrigger value="details" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-4 py-2 text-sm">
+                                    <User className="w-4 h-4 inline mr-2" />
+                                    Details & Verification
                                 </TabsTrigger>
-                                <TabsTrigger value="settings" className="gap-2">
-                                    <Settings className="w-4 h-4" />
+                            )}
+                            <TabsTrigger value="ideas" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-6 py-2">
+                                My Ideas
+                            </TabsTrigger>
+                            <TabsTrigger value="purchased" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-6 py-2">
+                                Purchased
+                            </TabsTrigger>
+                            {isOwnProfile && (
+                                <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400 px-6 py-2">
+                                    <Settings className="w-4 h-4 inline mr-2" />
                                     Settings
                                 </TabsTrigger>
-                            </>
-                        )}
-                    </TabsList>
+                            )}
+                        </TabsList>
+                    </div>
 
-                    {/* Overview Tab */}
-                    <TabsContent value="overview" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Recent Activity */}
-                            <Card className="lg:col-span-2">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Clock className="w-5 h-5" />
-                                        Recent Activity
-                                    </CardTitle>
-                                    <CardDescription>Your latest actions on the platform</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        {activities.length > 0 ? (
-                                            activities.map((activity) => {
-                                                const Icon = activity.icon;
-                                                return (
-                                                    <div
-                                                        key={activity.id}
-                                                        className="flex items-start gap-4 p-4 rounded-lg border border-border/50 hover:border-primary/50 transition-colors"
-                                                    >
-                                                        <div className={`p-2 rounded-lg bg-${activity.color}/10`}>
-                                                            <Icon className={`w-5 h-5 ${activity.color}`} />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <p className="font-medium">{activity.title}</p>
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {getRelativeTime(activity.timestamp)}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <div className="text-center py-12 text-muted-foreground">
-                                                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                                <p>No recent activity</p>
-                                                <p className="text-sm mt-2">Start by submitting an idea!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Quick Stats */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Award className="w-5 h-5" />
-                                        Achievements
-                                    </CardTitle>
-                                    <CardDescription>Your milestones</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        {stats.ideasSubmitted > 0 && (
-                                            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                                                <div className="p-2 rounded-lg bg-primary/10">
-                                                    <Lightbulb className="w-5 h-5 text-primary" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">First Idea</p>
-                                                    <p className="text-xs text-muted-foreground">Submitted your first idea</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {stats.ideasSubmitted >= 5 && (
-                                            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/10">
-                                                <div className="p-2 rounded-lg bg-secondary/10">
-                                                    <TrendingUp className="w-5 h-5 text-secondary" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">Prolific Creator</p>
-                                                    <p className="text-xs text-muted-foreground">5+ ideas submitted</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {stats.totalViews >= 100 && (
-                                            <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                                                <div className="p-2 rounded-lg bg-accent/10">
-                                                    <Eye className="w-5 h-5 text-accent" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm">Popular</p>
-                                                    <p className="text-xs text-muted-foreground">100+ total views</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {stats.ideasSubmitted === 0 && (
-                                            <div className="text-center py-8 text-muted-foreground">
-                                                <Award className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                                <p className="text-sm">No achievements yet</p>
-                                                <p className="text-xs mt-2">Submit ideas to earn achievements!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </TabsContent>
-
-                    {/* My Ideas Tab */}
-                    <TabsContent value="my-ideas" className="space-y-6">
-                        <Card>
+                    <TabsContent value="details" className="space-y-6">
+                        <Card className="bg-zinc-900/20 border-zinc-800">
                             <CardHeader>
-                                <CardTitle>My Submitted Ideas</CardTitle>
-                                <CardDescription>
-                                    Manage and track your submitted ideas
-                                </CardDescription>
+                                <CardTitle className="text-white">Personal Information</CardTitle>
+                                <CardDescription>Your email, qualifications, and verification status</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                {myIdeas.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {myIdeas.map((idea) => (
-                                            <IdeaCard
-                                                key={idea.id}
-                                                idea={idea}
-                                                variant="profile"
-                                                status={idea.status}
-                                                onEdit={() => navigate(`/submit-idea?id=${idea.id}`)}
-                                                onClick={() => { }} // Could open modal if needed, but for now just display
-                                            />
-                                        ))}
+                            <CardContent className="space-y-6">
+                                {/* Email */}
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400 text-sm font-bold uppercase tracking-wide">Email Address</Label>
+                                    <div className="flex items-center gap-2 text-zinc-300">
+                                        <Mail className="w-4 h-4 text-muted-foreground" />
+                                        <span>{profile.email}</span>
                                     </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <Lightbulb className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                                        <h3 className="text-lg font-semibold mb-2">No ideas yet</h3>
-                                        <p className="text-muted-foreground mb-4">
-                                            Start sharing your brilliant ideas with the world!
+                                </div>
+
+                                {/* Qualifications */}
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400 text-sm font-bold uppercase tracking-wide">Qualifications</Label>
+                                    {isEditing ? (
+                                        <Input
+                                            value={editedProfile.qualifications}
+                                            onChange={(e) => setEditedProfile({ ...editedProfile, qualifications: e.target.value })}
+                                            className="bg-zinc-900 border-zinc-800 text-zinc-200"
+                                            placeholder="e.g. Senior Product Designer"
+                                        />
+                                    ) : (
+                                        <p className="text-zinc-300">
+                                            {profile.qualifications || "No qualifications listed."}
                                         </p>
-                                        <Button onClick={() => navigate("/submit-idea")}>
-                                            Submit Your First Idea
-                                        </Button>
+                                    )}
+                                </div>
+
+                                <Separator className="bg-zinc-800" />
+
+                                {/* KYC Verification */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Shield className="w-5 h-5 text-green-500" />
+                                            <Label className="text-white text-base font-bold">Identity Verification</Label>
+                                        </div>
+                                        {getStatusBadge(profile.kyc_status)}
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
 
-                    {/* Purchased Ideas Tab */}
-                    <TabsContent value="purchased" className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Order History</CardTitle>
-                                <CardDescription>
-                                    Track your purchases and approval status
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {purchasedIdeas.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {purchasedIdeas.map((idea) => (
-                                            <motion.div
-                                                key={idea.id}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className="bento-card p-6 hover:shadow-lg transition-all"
-                                            >
-                                                {idea.image_url && (
-                                                    <div className="w-full h-32 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 mb-4 overflow-hidden">
-                                                        <img
-                                                            src={idea.image_url}
-                                                            alt={idea.title}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <h3 className="font-semibold line-clamp-2">{idea.title}</h3>
-                                                    {idea.status === 'pending' ? (
-                                                        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" /> Pending
-                                                        </Badge>
-                                                    ) : idea.status === 'rejected' ? (
-                                                        <Badge variant="destructive" className="flex items-center gap-1">
-                                                            <XCircle className="w-3 h-3" /> Rejected
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge className="bg-secondary/10 text-secondary border-secondary/20 flex items-center gap-1">
-                                                            <ShoppingBag className="w-3 h-3" /> Purchased
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm text-muted-foreground mb-3">{idea.category}</p>
-                                                <div className="flex items-center justify-between text-sm">
-                                                    <span className="font-bold text-primary">${idea.price}</span>
-                                                    <Button
-                                                        size="sm"
-                                                        variant={idea.status === 'approved' ? 'default' : 'secondary'}
-                                                        className="text-xs h-8"
-                                                        disabled={idea.status !== 'approved'}
-                                                        onClick={async () => {
-                                                            if (!idea.mvp_file_urls) {
-                                                                toast({
-                                                                    title: "No files available",
-                                                                    description: "The seller hasn't uploaded any MVP files for this idea.",
-                                                                    variant: "destructive"
-                                                                });
-                                                                return;
-                                                            }
-
-                                                            const urls = idea.mvp_file_urls.split(',').filter(u => u.trim());
-
-                                                            if (urls.length === 0) {
-                                                                toast({
-                                                                    title: "No valid files",
-                                                                    description: "No valid file links found.",
-                                                                    variant: "destructive"
-                                                                });
-                                                                return;
-                                                            }
-
-                                                            let successCount = 0;
-                                                            let failCount = 0;
-
-                                                            // Fetch GitHub token
-                                                            const token = await getGitHubToken();
-                                                            console.log("Download debug - Token:", token ? `Found (Length: ${token.length})` : "Missing");
-
-                                                            if (token === 'REPLACE_WITH_YOUR_REAL_GITHUB_TOKEN') {
-                                                                toast({
-                                                                    title: "Configuration Error",
-                                                                    description: "GitHub token not configured in Supabase platform_settings.",
-                                                                    variant: "destructive"
-                                                                });
-                                                                return;
-                                                            }
-
-                                                            for (const url of urls) {
-                                                                const cleanUrl = url.trim();
-                                                                let fetchUrl = cleanUrl;
-                                                                const headers: HeadersInit = {};
-
-                                                                // Convert GitHub blob URLs to API URLs to handle CORS
-                                                                // Regex to extract owner, repo, branch, and path
-                                                                const githubRegex = /github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/;
-                                                                const match = cleanUrl.match(githubRegex);
-
-                                                                if (match) {
-                                                                    const [_, owner, repo, branch, path] = match;
-                                                                    fetchUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
-                                                                    headers['Accept'] = 'application/vnd.github.v3.raw';
-                                                                }
-
-                                                                // Add token for auth
-                                                                if (token && (fetchUrl.includes('github') || fetchUrl.includes('api.github.com'))) {
-                                                                    headers['Authorization'] = `Bearer ${token}`;
-                                                                }
-
-                                                                console.log(`Download debug - Processing: ${cleanUrl} -> ${fetchUrl}`);
-
-                                                                try {
-                                                                    const response = await fetch(fetchUrl, { headers });
-                                                                    console.log(`Download debug - Fetch status: ${response.status}`);
-
-                                                                    if (!response.ok) {
-                                                                        const errorText = await response.text().catch(() => "No error details");
-                                                                        throw new Error(`HTTP ${response.status}: ${errorText}`);
-                                                                    }
-
-                                                                    const blob = await response.blob();
-                                                                    const downloadUrl = window.URL.createObjectURL(blob);
-                                                                    const a = document.createElement('a');
-                                                                    a.href = downloadUrl;
-                                                                    // Extract filename
-                                                                    const fileName = cleanUrl.split('/').pop()?.split('?')[0] || `file-${Date.now()}`;
-                                                                    a.download = fileName;
-                                                                    document.body.appendChild(a);
-                                                                    a.click();
-                                                                    window.URL.revokeObjectURL(downloadUrl);
-                                                                    document.body.removeChild(a);
-                                                                    successCount++;
-                                                                } catch (err) {
-                                                                    console.error("Download failed details:", err);
-                                                                    failCount++;
-                                                                }
-                                                            }
-
-                                                            if (successCount > 0) {
-                                                                toast({
-                                                                    title: "Download Complete",
-                                                                    description: `Successfully downloaded ${successCount} file(s).`
-                                                                });
-                                                            }
-
-                                                            if (failCount > 0) {
-                                                                toast({
-                                                                    title: "Download Issues",
-                                                                    description: `Failed to download ${failCount} file(s). Check repository permissions.`,
-                                                                    variant: "destructive"
-                                                                });
-                                                            }
-                                                        }}
-                                                    >
-                                                        {idea.status === 'approved' ? 'Download Files' : 'Locked'}
-                                                    </Button>
-                                                </div>
-                                                <div className="mt-3 text-xs text-muted-foreground">
-                                                    Purchased on {formatDate(idea.created_at)}
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                                        <h3 className="text-lg font-semibold mb-2">No purchases yet</h3>
-                                        <p className="text-muted-foreground mb-4">
-                                            Browse the marketplace to find amazing ideas!
-                                        </p>
-                                        <Button onClick={() => navigate("/marketplace")}>
-                                            Explore Marketplace
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* Settings Tab */}
-                    <TabsContent value="settings" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Developer Settings */}
-                            <PuterLogin />
-
-                            {/* Puter Cookie Management - Always Visible */}
-                            <Card className="border-accent/50 bg-accent/5">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-accent">
-                                        <Cookie className="w-5 h-5" />
-                                        Puter API Cookie Reset
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Clear Puter cookies if you encounter quota errors
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <p className="text-sm text-muted-foreground">
-                                        If you get "quota exceeded" or "rate limit" errors when using AI features,
-                                        click the button below to clear Puter.js cookies and reset your session.
+                                    <p className="text-sm text-zinc-400">
+                                        {profile.kyc_status === 'approved'
+                                            ? "You are a verified seller with full access to all features."
+                                            : profile.kyc_status === 'pending'
+                                                ? "Your verification is pending review. We'll notify you once it's processed."
+                                                : profile.kyc_status === 'rejected'
+                                                    ? `Verification was rejected${profile.rejection_reason ? `: ${profile.rejection_reason}` : '. Please re-submit with valid documents.'}`
+                                                    : "Complete verification to gain buyer trust and unlock premium features."}
                                     </p>
-                                    <Button
-                                        onClick={handleResetPuterSession}
-                                        size="sm"
-                                        className="gap-2"
-                                        variant="default"
-                                    >
-                                        <RefreshCw className="w-3 h-3" />
-                                        <Cookie className="w-3 h-3" />
+
+                                    {isOwnProfile && profile.kyc_status !== 'approved' && (
+                                        <div className="space-y-3 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+                                            <div className="flex gap-3">
+                                                <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-300" onClick={() => document.getElementById('kyc-upload-tab')?.click()}>
+                                                    <Upload className="w-4 h-4 mr-2" />
+                                                    Upload Document
+                                                </Button>
+                                                <input id="kyc-upload-tab" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleKYCUpload} />
+                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={submitKYCVerification}>
+                                                    <FileCheck className="w-4 h-4 mr-2" />
+                                                    Submit for Review
+                                                </Button>
+                                            </div>
+                                            {editedProfile.kyc_documents.length > 0 && (
+                                                <p className="text-xs text-zinc-500">
+                                                    {editedProfile.kyc_documents.length} document(s) uploaded
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="ideas" className="space-y-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white">My Ideas</h2>
+                            <Button onClick={() => navigate("/submit-idea")} className="bg-green-600 hover:bg-green-700">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Submit New Idea
+                            </Button>
+                        </div>
+
+                        {myIdeas.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {myIdeas.map((idea) => (
+                                    <IdeaCard
+                                        key={idea.id}
+                                        idea={idea}
+                                        variant="profile"
+                                        status={idea.status}
+                                        onEdit={() => navigate(`/submit-idea?id=${idea.id}`)}
+                                        onClick={() => { }}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 bg-zinc-900/20 border border-zinc-800/50 border-dashed rounded-3xl">
+                                <Lightbulb className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
+                                <h3 className="text-xl font-bold text-white mb-2">No ideas submitted yet</h3>
+                                <p className="text-zinc-500 mb-6">Share your first brilliant idea with the world.</p>
+                                <Button onClick={() => navigate("/submit-idea")} className="bg-green-600 hover:bg-green-700">
+                                    Start Creating
+                                </Button>
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="purchased" className="space-y-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white">Purchased Ideas</h2>
+                        </div>
+
+                        {purchasedIdeas.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {purchasedIdeas.map((idea) => (
+                                    <IdeaCard
+                                        key={idea.id}
+                                        idea={idea}
+                                        onClick={() => navigate(`/marketplace/${idea.id}`)}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 bg-zinc-900/20 border border-zinc-800/50 border-dashed rounded-3xl">
+                                <ShoppingBag className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
+                                <h3 className="text-xl font-bold text-white mb-2">No ideas purchased yet</h3>
+                                <p className="text-zinc-500 mb-6">Explore the marketplace to find your next venture.</p>
+                                <Button onClick={() => navigate("/marketplace")} variant="outline" className="border-zinc-700 text-white">
+                                    Browse Marketplace
+                                </Button>
+                            </div>
+
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="space-y-6">
+                        <Card className="bg-zinc-900/20 border-zinc-800">
+                            <CardHeader>
+                                <CardTitle className="text-white">Notification Preferences</CardTitle>
+                                <CardDescription>Manage how you receive notifications</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-medium text-white">Email Notifications</Label>
+                                        <p className="text-xs text-zinc-500">Receive email updates about your account activity</p>
+                                    </div>
+                                    <Switch checked={notifications.email} onCheckedChange={(checked) => setNotifications({ ...notifications, email: checked })} />
+                                </div>
+                                <Separator className="bg-zinc-800" />
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-medium text-white">Push Notifications</Label>
+                                        <p className="text-xs text-zinc-500">Receive push notifications in your browser</p>
+                                    </div>
+                                    <Switch checked={notifications.push} onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })} />
+                                </div>
+                                <Separator className="bg-zinc-800" />
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm font-medium text-white">Marketing Emails</Label>
+                                        <p className="text-xs text-zinc-500">Receive news, updates, and special offers</p>
+                                    </div>
+                                    <Switch checked={notifications.marketing} onCheckedChange={(checked) => setNotifications({ ...notifications, marketing: checked })} />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-zinc-900/20 border-zinc-800">
+                            <CardHeader>
+                                <CardTitle className="text-white">Advanced Settings</CardTitle>
+                                <CardDescription>Manage your session and account</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium text-white">Puter AI Session</Label>
+                                    <p className="text-xs text-zinc-500 mb-3">Reset your Puter AI session if you're experiencing quota or authentication issues.</p>
+                                    <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" onClick={handleResetPuterSession}>
+                                        <RefreshCw className="w-4 h-4 mr-2" />
                                         Reset Puter Session
                                     </Button>
-                                </CardContent>
-                            </Card>
-                            {/* Notification Settings */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Bell className="w-5 h-5" />
-                                        Notifications
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Manage your notification preferences
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label htmlFor="email-notifications">Email Notifications</Label>
-                                            <p className="text-sm text-muted-foreground">
-                                                Receive email updates about your ideas
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            id="email-notifications"
-                                            checked={notifications.email}
-                                            onCheckedChange={(checked) =>
-                                                setNotifications({ ...notifications, email: checked })
-                                            }
-                                        />
-                                    </div>
-                                    <Separator />
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label htmlFor="push-notifications">Push Notifications</Label>
-                                            <p className="text-sm text-muted-foreground">
-                                                Get push notifications on your device
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            id="push-notifications"
-                                            checked={notifications.push}
-                                            onCheckedChange={(checked) =>
-                                                setNotifications({ ...notifications, push: checked })
-                                            }
-                                        />
-                                    </div>
-                                    <Separator />
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label htmlFor="marketing">Marketing Emails</Label>
-                                            <p className="text-sm text-muted-foreground">
-                                                Receive updates about new features
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            id="marketing"
-                                            checked={notifications.marketing}
-                                            onCheckedChange={(checked) =>
-                                                setNotifications({ ...notifications, marketing: checked })
-                                            }
-                                        />
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Account Settings */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Shield className="w-5 h-5" />
-                                        Account Security
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Manage your account security settings
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="current-password">Current Password</Label>
-                                        <Input
-                                            id="current-password"
-                                            type="password"
-                                            placeholder="Enter current password"
-                                            className="mt-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="new-password">New Password</Label>
-                                        <Input
-                                            id="new-password"
-                                            type="password"
-                                            placeholder="Enter new password"
-                                            className="mt-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="confirm-password">Confirm New Password</Label>
-                                        <Input
-                                            id="confirm-password"
-                                            type="password"
-                                            placeholder="Confirm new password"
-                                            className="mt-2"
-                                        />
-                                    </div>
-                                    <Button className="w-full">Update Password</Button>
-                                    <Separator />
-                                    <Button
-                                        variant="destructive"
-                                        className="w-full"
-                                        onClick={async () => {
-                                            await signOut();
-                                            navigate("/login");
-                                        }}
-                                    >
+                                </div>
+                                <Separator className="bg-zinc-800" />
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium text-white">Account Actions</Label>
+                                    <p className="text-xs text-zinc-500 mb-3">Sign out of your account on this device.</p>
+                                    <Button variant="destructive" size="sm" onClick={() => { signOut(); navigate("/"); }}>
                                         Sign Out
                                     </Button>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                 </Tabs>
             </div>
-
             <Footer />
         </div >
     );

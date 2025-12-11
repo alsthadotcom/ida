@@ -20,6 +20,8 @@ import { Sparkles, ArrowRight, ArrowLeft, Upload, Check, AlertCircle, Trash2, Fi
 import { CATEGORIES, TOPIC_TYPES, TARGET_AUDIENCES, REGIONS } from "@/constants/marketplace";
 import PuterLogin from "@/components/auth/PuterLogin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CategoryDropdown } from "@/components/ui/CategoryDropdown";
+import { suggestCategory } from "@/services/aiService";
 
 // --- Types ---
 interface FormData {
@@ -86,6 +88,18 @@ const SubmitIdea = () => {
   const [showMvpTypeDialog, setShowMvpTypeDialog] = useState(false);
   const [newUrl, setNewUrl] = useState("");
 
+  // Migration State (Category AI)
+  const [categoryMode, setCategoryMode] = useState<'Manual' | 'AI'>('Manual');
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
+
+  // File Upload State
+  const [mainDocument, setMainDocument] = useState<File | null>(null);
+  const [additionalDocuments, setAdditionalDocuments] = useState<File[]>([]);
+  const [mvpMediaFiles, setMvpMediaFiles] = useState<File[]>([]);
+  const [existingMainDocUrl, setExistingMainDocUrl] = useState<string | null>(null);
+  const [existingAdditionalDocs, setExistingAdditionalDocs] = useState<string[]>([]);
+  const [existingMvpMedia, setExistingMvpMedia] = useState<{ url: string, type: 'image' | 'video' }[]>([]);
+
   // Scroll to top on step change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -134,12 +148,32 @@ const SubmitIdea = () => {
           });
 
           // Load files
-          if (idea.mvp_file_urls) {
+          // Legacy support or new fields
+          if (idea.document_url) setExistingMainDocUrl(idea.document_url);
+
+          const addDocs = [];
+          if (idea.additional_doc_1) addDocs.push(idea.additional_doc_1);
+          if (idea.additional_doc_2) addDocs.push(idea.additional_doc_2);
+          if (idea.additional_doc_3) addDocs.push(idea.additional_doc_3);
+          setExistingAdditionalDocs(addDocs);
+
+          const mvpMedia = [];
+          if (idea.physical_mvp_image) mvpMedia.push({ url: idea.physical_mvp_image, type: 'image' as const });
+          if (idea.physical_mvp_video) mvpMedia.push({ url: idea.physical_mvp_video, type: 'video' as const });
+          setExistingMvpMedia(mvpMedia);
+
+          // Legacy MVP URL handling
+          if (idea.mvp_file_urls && !idea.physical_mvp_image && !idea.digital_mvp) {
             const files = idea.mvp_file_urls.split(',').filter(Boolean).map((url: string) => ({
               name: decodeURIComponent(url.split('/').pop() || 'file'),
-              url
+              url,
+              type: url.match(/\.(mp4|mov|webm)$/i) ? 'video' : 'image'
             }));
+            // Just treat them as MVP media for now if type matches, or leave as existingFiles for legacy display
             setExistingFiles(files);
+          }
+          if (idea.digital_mvp) {
+            handleInput('mvpUrls', [idea.digital_mvp]); // Or handle separately
           }
         }
       };
@@ -153,10 +187,8 @@ const SubmitIdea = () => {
   };
 
   const handleMVPToggle = (checked: boolean) => {
-    if (checked) {
-      setShowMvpTypeDialog(true);
-    } else {
-      handleInput('hasMVP', false);
+    handleInput('hasMVP', checked);
+    if (!checked) {
       handleInput('mvpType', 'none');
       setUploadedFiles([]);
       handleInput('mvpUrls', []);
@@ -164,9 +196,7 @@ const SubmitIdea = () => {
   };
 
   const handleMVPTypeSelect = (type: "physical" | "digital") => {
-    handleInput('hasMVP', true);
     handleInput('mvpType', type);
-    setShowMvpTypeDialog(false);
   };
 
   const handleAddUrl = () => {
@@ -249,20 +279,71 @@ const SubmitIdea = () => {
     }
     setIsSubmitting(true);
     try {
-      // Upload Files logic (Simulated/Imported)
-      let fileUrls: string[] = existingFiles.map(f => f.url);
+      // 1. Upload Primary Document
+      let documentUrl = existingMainDocUrl;
+      if (mainDocument) {
+        const { uploadEvidenceFiles } = await import('@/services/ideaService');
+        // We use uploadEvidenceFiles but it returns array, we take first. 
+        // Ideally we should have a specific bucket or path, but reusing evidence bucket is fine.
+        const urls = await uploadEvidenceFiles([mainDocument], `docs-${Date.now()}`); // using specific prefix if possible or just ideaId logic later
+        documentUrl = urls[0];
+      }
 
-      if (uploadedFiles.length > 0) {
-        const { uploadMVPFilesToGitHub } = await import('@/services/githubService');
-        const res = await uploadMVPFilesToGitHub(user.id, formData.title, uploadedFiles, platformToken);
-        fileUrls = [...fileUrls, ...res.fileUrls];
+      // 2. Upload Additional Docs
+      let newAdditionalUrls: string[] = [];
+      if (additionalDocuments.length > 0) {
+        const { uploadEvidenceFiles } = await import('@/services/ideaService');
+        newAdditionalUrls = await uploadEvidenceFiles(additionalDocuments, `add-docs-${Date.now()}`);
+      }
+
+      // Combine with existing
+      const finalAdditionalDocs = [...existingAdditionalDocs, ...newAdditionalUrls];
+
+      // 3. Upload MVP Media
+      let mvpMediaUrls: string[] = existingMvpMedia.map(m => m.url);
+      if (mvpMediaFiles.length > 0) {
+        const { uploadEvidenceFiles } = await import('@/services/ideaService');
+        const urls = await uploadEvidenceFiles(mvpMediaFiles, `mvp-${Date.now()}`);
+        mvpMediaUrls = [...mvpMediaUrls, ...urls];
+      }
+
+      // Legacy / Digital MVP URLs
+      let finalMvpFileUrls = mvpMediaUrls.join(',');
+
+      // If Digital, use URLs from state
+      if (formData.mvpType === 'digital') {
+        // If we have manual URLs for digital MVP
+        // We might store them in mvp_urls or mvp_file_urls depending on schema. 
+        // ideaService maps mvpUrls -> (not mapped in createIdea? It uses mvpFileUrls). 
+        // We should probably map valid URLs to mvp_file_urls or a new field if available.
+        // Looking at ideaService, it uses `mvp_file_urls: ideaData.mvpFileUrls`.
+        // So let's join them.
+        finalMvpFileUrls = [...mvpMediaUrls, ...formData.mvpUrls].join(',');
       }
 
       const payload = {
         ...formData,
         description: formData.longDescription, // Map back
         uniqueness: validationResult?.score || 0,
-        mvpFileUrls: fileUrls.join(',')
+
+        // New Fields Mapped
+        documentUrl: documentUrl,
+        additionalDoc1: finalAdditionalDocs[0] || null,
+        additionalDoc2: finalAdditionalDocs[1] || null,
+        additionalDoc3: finalAdditionalDocs[2] || null,
+
+        mvpType: formData.mvpType,
+        physicalMvpImage: (formData.mvpType === 'physical' && mvpMediaUrls.length > 0) ? mvpMediaUrls[0] : null, // First image as main
+        physicalMvpVideo: (formData.mvpType === 'physical' && mvpMediaUrls.find(u => u.match(/\.(mp4|mov|webm)$/i))) || null, // First video
+
+        mvpFileUrls: finalMvpFileUrls,
+
+        // AI Scores
+        aiScores: validationResult?.metrics ? {
+          metrics: validationResult.metrics,
+          market: validationResult.market,
+          analysis: validationResult.analysis
+        } : null
       };
 
       if (isEditing && ideaId) {
@@ -276,6 +357,7 @@ const SubmitIdea = () => {
       setTimeout(() => navigate('/marketplace'), 1500);
 
     } catch (error: any) {
+      console.error(error);
       toast({ title: "Submission Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -287,12 +369,12 @@ const SubmitIdea = () => {
   const renderStepIndicator = () => (
     <div className="flex justify-center mb-12">
       <div className="flex items-center gap-2">
-        {[1, 2, 3, 4, 5, 6].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div key={s} className="flex items-center">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step === s ? 'bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/25' : step > s ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
               {step > s ? <Check className="w-5 h-5" /> : s}
             </div>
-            {s < 6 && <div className={`w-12 h-1 rounded-full mx-2 ${step > s ? 'bg-primary/20' : 'bg-muted'}`} />}
+            {s < 4 && <div className={`w-12 h-1 rounded-full mx-2 ${step > s ? 'bg-primary/20' : 'bg-muted'}`} />}
           </div>
         ))}
       </div>
@@ -309,13 +391,11 @@ const SubmitIdea = () => {
             {isEditing ? "Refine Your Asset" : "Launch Your Idea"}
           </h1>
           <p className="text-muted-foreground">
-            step {step} of 6: {
+            step {step} of 4: {
               step === 1 ? "The Pitch" :
                 step === 2 ? "The Details" :
                   step === 3 ? "The Assets" :
-                    step === 4 ? "AI Validation" :
-                      step === 5 ? "Value & Pricing" :
-                        "Final Review"
+                    "AI Validation & Launch"
             }
           </p>
         </motion.div>
@@ -340,10 +420,56 @@ const SubmitIdea = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <Label>Category <span className="text-destructive">*</span></Label>
-                    <Select value={formData.category} onValueChange={v => handleInput('category', v)}>
-                      <SelectTrigger className="h-12 bg-background/50"><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                    </Select>
+
+                    {/* Category Mode Toggles */}
+                    <div className="flex bg-muted/50 border rounded-lg p-1 gap-1 mb-2 max-w-sm">
+                      <button
+                        type="button"
+                        onClick={() => setCategoryMode('Manual')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded transition-all ${categoryMode === 'Manual' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        Manual
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setCategoryMode('AI');
+                          if (formData.title && formData.shortDescription) {
+                            setIsSuggestingCategory(true);
+                            const cat = await suggestCategory(formData.title, formData.shortDescription);
+                            handleInput('category', cat);
+                            setIsSuggestingCategory(false);
+                          } else if (!formData.title) {
+                            toast({ title: "Title Required", description: "Please enter a title for AI suggestion.", variant: "destructive" });
+                          }
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded flex items-center justify-center gap-1.5 transition-all ${categoryMode === 'AI' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        {isSuggestingCategory ? "Analyzing..." : "AI Suggest"}
+                      </button>
+                    </div>
+
+                    {categoryMode === 'Manual' ? (
+                      <CategoryDropdown
+                        value={formData.category}
+                        onChange={(v) => handleInput('category', v)}
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="relative">
+                        <Input
+                          value={formData.category || (isSuggestingCategory ? "Analyzing..." : "Select Manual or Click AI Suggest")}
+                          readOnly
+                          className={`h-12 bg-primary/5 border-primary/20 text-primary font-medium ${isSuggestingCategory ? 'animate-pulse' : ''}`}
+                        />
+                        {categoryMode === 'AI' && !isSuggestingCategory && !formData.category && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Enter a Title and Pitch, then click AI Suggest.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-4">
                     <Label>Region <span className="text-destructive">*</span></Label>
@@ -427,34 +553,163 @@ const SubmitIdea = () => {
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input type="number" value={formData.price} onChange={e => handleInput('price', e.target.value)} className="pl-10 h-16 text-2xl font-bold bg-background/50" placeholder="5000" />
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground bg-primary/5 p-4 rounded-xl">
-                    <Zap className="w-4 h-4 text-primary" />
-                    AI estimated value based on your score: <span className="font-bold text-primary">$1,500 - $8,000</span>
-                  </div>
+                  {/* AI Price Estimate Placeholder */}
                 </div>
 
                 <div className="border-t border-border/50 pt-8 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-lg">Do you have an MVP?</Label>
-                    <Switch checked={formData.hasMVP} onCheckedChange={c => handleInput('hasMVP', c)} />
-                  </div>
 
-                  <div className="border-2 border-dashed border-primary/20 rounded-2xl p-8 text-center bg-background/30 hover:bg-background/50 transition-colors">
-                    <Upload className="w-12 h-12 mx-auto text-primary mb-4" />
-                    <h3 className="font-bold mb-2">Upload Evidence</h3>
-                    <p className="text-muted-foreground text-sm mb-4">Drag & drop or click to upload files (PDF, Video, Mockups)</p>
-                    <Input type="file" multiple className="max-w-xs mx-auto" onChange={handleFileUpload} />
+                  {/* PROSPECTUS / DOCUMENT UPLOAD - NEW */}
+                  <div className="space-y-4">
+                    <Label className="text-lg flex items-center gap-2">
+                      Primary Document (Prospectus) <span className="text-destructive">*</span>
+                      <span className="text-xs font-normal text-muted-foreground">(PDF, Max 10MB)</span>
+                    </Label>
 
-                    {uploadedFiles.length > 0 && (
-                      <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                        {uploadedFiles.map((f, i) => (
-                          <div key={i} className="flex items-center gap-2 px-3 py-1 bg-background rounded-full border text-xs">
-                            {f.name} <X className="w-3 h-3 cursor-pointer" onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))} />
-                          </div>
-                        ))}
+                    {(mainDocument || existingMainDocUrl) ? (
+                      <div className="flex items-center justify-between bg-primary/5 px-4 py-3 rounded-lg border border-primary/20">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-primary" />
+                          <span className="text-sm font-medium truncate max-w-[200px]">
+                            {mainDocument ? mainDocument.name : 'Existing Document'}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                          onClick={() => { setMainDocument(null); setExistingMainDocUrl(null); }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="application/pdf,image/png,image/jpeg"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) setMainDocument(e.target.files[0]);
+                          }}
+                        />
+                        <div className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors rounded-xl p-8 text-center bg-background/30">
+                          <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm font-medium">Click to upload Prospectus</p>
+                          <p className="text-xs text-muted-foreground mt-1">Required for listing</p>
+                        </div>
                       </div>
                     )}
+
+                    {/* Additional Documents */}
+                    <div className="pt-2">
+                      <Label className="text-sm text-muted-foreground mb-2 block">Additional Documents (Optional, Max 3)</Label>
+                      <div className="space-y-2">
+                        {existingAdditionalDocs.map((doc, i) => (
+                          <div key={`ex-${i}`} className="flex justify-between items-center bg-muted/30 px-3 py-2 rounded border border-border/50">
+                            <span className="text-xs text-muted-foreground">Existing Doc {i + 1}</span>
+                            <X className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive" onClick={() => setExistingAdditionalDocs(prev => prev.filter((_, idx) => idx !== i))} />
+                          </div>
+                        ))}
+                        {additionalDocuments.map((doc, i) => (
+                          <div key={`new-${i}`} className="flex justify-between items-center bg-muted/30 px-3 py-2 rounded border border-border/50">
+                            <span className="text-xs font-medium">{doc.name}</span>
+                            <X className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive" onClick={() => setAdditionalDocuments(prev => prev.filter((_, idx) => idx !== i))} />
+                          </div>
+                        ))}
+
+                        {(additionalDocuments.length + existingAdditionalDocs.length < 3) && (
+                          <div className="relative inline-block">
+                            <input
+                              type="file"
+                              accept="application/pdf"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) setAdditionalDocuments([...additionalDocuments, e.target.files[0]]);
+                              }}
+                            />
+                            <Button variant="outline" size="sm" className="text-xs h-7 gap-1">
+                              <Plus className="w-3 h-3" /> Add Document
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* MVP SECTION */}
+                  <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                    <Label className="text-lg">Do you have an MVP?</Label>
+                    <Switch checked={formData.hasMVP} onCheckedChange={handleMVPToggle} />
+                  </div>
+
+                  {formData.hasMVP && (
+                    <div className="bg-muted/10 border border-border/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4">
+                      <div className="flex gap-4 mb-6">
+                        <div
+                          onClick={() => handleMVPTypeSelect('physical')}
+                          className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col items-center gap-2 ${formData.mvpType === 'physical' ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/20'}`}
+                        >
+                          <Package className={`w-6 h-6 ${formData.mvpType === 'physical' ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span className="font-bold text-sm">Physical Product</span>
+                        </div>
+                        <div
+                          onClick={() => handleMVPTypeSelect('digital')}
+                          className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col items-center gap-2 ${formData.mvpType === 'digital' ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/20'}`}
+                        >
+                          <Monitor className={`w-6 h-6 ${formData.mvpType === 'digital' ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span className="font-bold text-sm">Digital / SaaS</span>
+                        </div>
+                      </div>
+
+                      {formData.mvpType === 'physical' && (
+                        <div className="space-y-4">
+                          <Label>Upload Photos/Videos of Product</Label>
+                          <div className="relative border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 text-center">
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*,video/*"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              onChange={(e) => {
+                                if (e.target.files) setMvpMediaFiles(Array.from(e.target.files));
+                              }}
+                            />
+                            <p className="text-sm text-muted-foreground">Click to upload media</p>
+                          </div>
+                          {/* Preview Files */}
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            {[...existingMvpMedia, ...mvpMediaFiles.map(f => ({ url: URL.createObjectURL(f), name: f.name }))].map((f, i) => (
+                              <div key={i} className="px-2 py-1 bg-background border rounded flex items-center gap-2">
+                                Media {i + 1}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.mvpType === 'digital' && (
+                        <div className="space-y-4">
+                          <Label>Project URL / Demo Link</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="https://..."
+                              value={newUrl}
+                              onChange={e => setNewUrl(e.target.value)}
+                            />
+                            <Button onClick={handleAddUrl} size="icon"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="space-y-2 mt-2">
+                            {formData.mvpUrls.map((url, i) => (
+                              <div key={i} className="flex justify-between items-center bg-muted/30 px-3 py-2 rounded text-sm">
+                                <span className="truncate max-w-[200px]">{url}</span>
+                                <X className="w-3 h-3 cursor-pointer hover:text-destructive" onClick={() => handleRemoveUrl(i)} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <Button onClick={() => setStep(4)} className="w-full h-14 text-lg rounded-full">Next: Final Review</Button>
@@ -518,18 +773,53 @@ const SubmitIdea = () => {
                     {/* Validation Results */}
                     {validationResult.status !== 'skipped' && (
                       <div className="bg-primary/5 border border-primary/10 rounded-2xl p-8">
-                        <div className="flex flex-col md:flex-row items-center gap-6 mb-6">
-                          <div className="relative shrink-0">
-                            <div className="w-24 h-24 rounded-full flex items-center justify-center bg-background border-4 border-primary/20 text-3xl font-black text-primary">
-                              {validationResult.score}
+                        <div className="flex flex-col md:flex-row items-center gap-8 mb-6">
+                          {/* Overall Score with Ring */}
+                          <div className="relative shrink-0 flex flex-col items-center">
+                            <div className="relative w-32 h-32 flex items-center justify-center">
+                              {/* Simple SVG Ring for Overall Score */}
+                              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-background" />
+                                <circle
+                                  cx="50" cy="50" r="40"
+                                  stroke="currentColor" strokeWidth="8"
+                                  fill="transparent"
+                                  strokeDasharray={`${2 * Math.PI * 40}`}
+                                  strokeDashoffset={`${2 * Math.PI * 40 * (1 - (validationResult.score / 100))}`}
+                                  className="text-primary transition-all duration-1000 ease-out"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-black text-primary">{validationResult.score}</span>
+                                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Overall</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex-1 space-y-2 text-center md:text-left">
+
+                          <div className="flex-1 space-y-4">
                             <h3 className="font-bold text-xl flex items-center justify-center md:justify-start gap-2">
                               {validationResult.status === 'passed' ? <CheckCircle2 className="text-green-500" /> : <AlertCircle className="text-yellow-500" />}
                               {validationResult.status === 'passed' ? "Great Potential!" : "Needs Refinement"}
                             </h3>
                             <p className="text-muted-foreground">{validationResult.analysis || validationResult.feedback?.[0]}</p>
+
+                            {/* Individual Metrics if available */}
+                            {validationResult.metrics && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                                {[
+                                  { l: 'Uniqueness', v: validationResult.metrics.uniqueness },
+                                  { l: 'Feasibility', v: validationResult.metrics.feasibility },
+                                  { l: 'Clarity', v: validationResult.metrics.clarity },
+                                  { l: 'Executability', v: validationResult.metrics.executability },
+                                ].map(m => (
+                                  <div key={m.l} className="bg-background/40 p-3 rounded-lg text-center border">
+                                    <div className="text-lg font-bold text-foreground">{m.v}</div>
+                                    <div className="text-[10px] uppercase text-muted-foreground">{m.l}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -556,6 +846,17 @@ const SubmitIdea = () => {
                           <div className="text-right">
                             <div className="text-2xl font-black text-primary">${formData.price}</div>
                             <div className="text-xs text-muted-foreground">Asking Price</div>
+                          </div>
+                        </div>
+
+                        {/* Files Summary */}
+                        <div className="space-y-2 pt-4 border-t border-border/50">
+                          <span className="text-xs font-semibold text-muted-foreground">Assets Included:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {mainDocument && <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs border border-blue-500/20">Prospectus</span>}
+                            {additionalDocuments.length > 0 && <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs border border-blue-500/20">+{additionalDocuments.length} Docs</span>}
+                            {formData.hasMVP && <span className="px-2 py-1 bg-purple-500/10 text-purple-500 rounded text-xs border border-purple-500/20">MVP ({formData.mvpType})</span>}
+                            {mvpMediaFiles.length > 0 && <span className="px-2 py-1 bg-purple-500/10 text-purple-500 rounded text-xs border border-purple-500/20">+{mvpMediaFiles.length} Media</span>}
                           </div>
                         </div>
 

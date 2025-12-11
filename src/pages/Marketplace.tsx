@@ -83,32 +83,40 @@ const Marketplace = () => {
       <Navbar />
       <main className="pt-32 pb-20 container mx-auto px-4">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-12">
-          <div>
+        <div className="flex flex-col gap-6 mb-12">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-5xl md:text-6xl font-black font-outfit text-foreground tracking-tight"
+              >
+                Marketplace
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-lg text-muted-foreground/80 max-w-2xl"
+              >
+                Discover verified business concepts, IP, and franchise opportunities ready for acquisition.
+              </motion.p>
+            </div>
+
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-4 border border-primary/20"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
             >
-              <TrendingUp className="w-3 h-3" />
-              Marketplace
+              <Button
+                size="lg"
+                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all duration-300"
+                asChild
+              >
+                <Link to="/submit-idea">
+                  + Add new listing
+                </Link>
+              </Button>
             </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="display-lg font-outfit text-foreground mb-4"
-            >
-              Discover Your Next <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">Big Opportunity</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-lg text-muted-foreground"
-            >
-              Browse thousands of AI-validated business frameworks.
-            </motion.p>
           </div>
         </div>
 
@@ -117,24 +125,24 @@ const Marketplace = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="sticky top-24 z-30 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg p-4 mb-8"
+          className="mb-12"
         >
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
             <div className="relative flex-grow">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                placeholder="Search by keyword, industry, or tech..."
-                className="pl-12 h-12 rounded-xl bg-secondary/5 border-border/50 focus:ring-primary/20"
+                placeholder="Search assets, industries, or keywords..."
+                className="pl-12 h-12 rounded-xl bg-secondary/20 border-border/20 focus:border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
+            <div className="flex gap-3 overflow-x-auto pb-2 lg:pb-0">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-secondary/5 border-border/50">
-                  <SelectValue placeholder="Category" />
+                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-secondary/20 border-border/20 text-foreground">
+                  <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
@@ -144,32 +152,21 @@ const Marketplace = () => {
               </Select>
 
               <Button
-                variant={showFilters ? "default" : "outline"}
-                onClick={() => setShowFilters(!showFilters)}
-                className="h-12 rounded-xl border-border/50 px-6 gap-2"
+                variant="outline"
+                className="h-12 rounded-xl border-border/20 bg-secondary/20 hover:bg-secondary/40 text-foreground gap-2 px-6"
               >
                 <SlidersHorizontal className="w-4 h-4" />
-                <span className="hidden sm:inline">Filters</span>
+                Sort
               </Button>
 
-              <div className="flex items-center bg-secondary/5 rounded-xl border border-border/50 p-1 h-12">
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-9 w-9 rounded-lg"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="icon"
-                  className="h-9 w-9 rounded-lg"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                className="h-12 rounded-xl border-border/20 bg-secondary/20 hover:bg-secondary/40 text-foreground gap-2 px-6"
+              >
+                <Filter className="w-4 h-4" />
+                Filter
+              </Button>
             </div>
           </div>
 
@@ -182,7 +179,7 @@ const Marketplace = () => {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="pt-6 border-t border-border/50 mt-4 px-2">
+                <div className="pt-6 border-t border-border/10 mt-4 px-2">
                   <div className="flex flex-col md:flex-row justify-between gap-8">
                     <div className="flex-1 max-w-md">
                       <label className="text-sm font-bold text-foreground mb-4 block">
@@ -201,7 +198,7 @@ const Marketplace = () => {
                         setPriceRange([0, 100000]);
                         setSelectedCategory("All Categories");
                         setSearchQuery("");
-                      }} className="text-muted-foreground hover:text-destructive">
+                      }} className="text-muted-foreground hover:text-white">
                         <X className="w-4 h-4 mr-2" />
                         Clear All Filters
                       </Button>
@@ -212,25 +209,6 @@ const Marketplace = () => {
             )}
           </AnimatePresence>
         </motion.div>
-
-        {/* Results Area */}
-        <div className="mb-8 flex items-center justify-between text-sm text-muted-foreground">
-          <span>Showing {filteredIdeas.length} results</span>
-          <Select defaultValue="newest">
-            <SelectTrigger className="w-[140px] h-8 text-xs border-none bg-transparent hover:bg-transparent p-0 justify-end">
-              <div className="flex items-center gap-2">
-                <span>Sort by:</span>
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="price_asc">Price: Low to High</SelectItem>
-              <SelectItem value="price_desc">Price: High to Low</SelectItem>
-              <SelectItem value="rating">Top Rated</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

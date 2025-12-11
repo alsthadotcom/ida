@@ -5,19 +5,26 @@ import {
     ArrowLeft, ChevronRight, Github,
     Code2, Layers, Rocket, CheckCircle2, FileText,
     Zap, Box, Activity, Target, Globe, TrendingUp,
-    Users, DollarSign, Award, ChevronDown, BarChart, X
+    Users, DollarSign, Award, ChevronDown, BarChart, X,
+    Heart, Bookmark, Share2, Check
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { fetchIdeaBySlug } from "@/services/ideaService";
+import { fetchIdeaBySlug, incrementIdeaLikes, decrementIdeaLikes } from "@/services/ideaService";
 
 const IdeaDetails = () => {
     const { slug } = useParams();
     const [idea, setIdea] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+
+    // Social State
+    const [likesCount, setLikesCount] = useState(0);
+    const [localLiked, setLocalLiked] = useState(false);
+    const [localSaved, setLocalSaved] = useState(false);
+    const [justShared, setJustShared] = useState(false);
 
     useEffect(() => {
         const loadIdea = async () => {
@@ -29,6 +36,17 @@ const IdeaDetails = () => {
             try {
                 const fetchedIdea = await fetchIdeaBySlug(slug);
                 setIdea(fetchedIdea);
+
+                if (fetchedIdea) {
+                    setLikesCount(fetchedIdea.likes_count || fetchedIdea.likes || 0);
+
+                    // Check local storage
+                    const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+                    setLocalLiked(likedIdeas.includes(fetchedIdea.id));
+
+                    const savedIdeas = JSON.parse(localStorage.getItem('saved_ideas') || '[]');
+                    setLocalSaved(savedIdeas.includes(fetchedIdea.id));
+                }
             } catch (error) {
                 console.error('Error loading idea:', error);
             } finally {
@@ -38,6 +56,74 @@ const IdeaDetails = () => {
 
         loadIdea();
     }, [slug]);
+
+    // Handlers
+    const handleLike = async () => {
+        if (!idea) return;
+        const currentLikes = likesCount;
+
+        try {
+            if (localLiked) {
+                setLikesCount(prev => Math.max(0, prev - 1));
+                setLocalLiked(false);
+                const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+                const newLikedIdeas = likedIdeas.filter((id: string) => id !== idea.id);
+                localStorage.setItem('liked_ideas', JSON.stringify(newLikedIdeas));
+                await decrementIdeaLikes(idea.id, currentLikes);
+            } else {
+                setLikesCount(prev => prev + 1);
+                setLocalLiked(true);
+                const likedIdeas = JSON.parse(localStorage.getItem('liked_ideas') || '[]');
+                if (!likedIdeas.includes(idea.id)) {
+                    likedIdeas.push(idea.id);
+                    localStorage.setItem('liked_ideas', JSON.stringify(likedIdeas));
+                }
+                await incrementIdeaLikes(idea.id, currentLikes);
+            }
+        } catch (error) {
+            console.error("Error toggling like:", error);
+            setLikesCount(currentLikes);
+            setLocalLiked(!localLiked);
+        }
+    };
+
+    const handleSave = () => {
+        if (!idea) return;
+        const savedIdeas = JSON.parse(localStorage.getItem('saved_ideas') || '[]');
+
+        if (localSaved) {
+            const newSavedIdeas = savedIdeas.filter((id: string) => id !== idea.id);
+            localStorage.setItem('saved_ideas', JSON.stringify(newSavedIdeas));
+            setLocalSaved(false);
+        } else {
+            if (!savedIdeas.includes(idea.id)) {
+                savedIdeas.push(idea.id);
+                localStorage.setItem('saved_ideas', JSON.stringify(savedIdeas));
+            }
+            setLocalSaved(true);
+        }
+    };
+
+    const handleShare = async () => {
+        if (!idea) return;
+        const shareUrl = window.location.href;
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: idea.title,
+                    text: `Check out this idea: ${idea.title}`,
+                    url: shareUrl
+                });
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                setJustShared(true);
+                setTimeout(() => setJustShared(false), 2000);
+            }
+        } catch (error) {
+            console.error("Error sharing:", error);
+        }
+    };
 
     if (!idea && !loading) return <div className="min-h-screen bg-background flex items-center justify-center">Idea not found</div>;
     if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
@@ -106,8 +192,15 @@ const IdeaDetails = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    onClick={() => setShowDetailedAnalysis(!showDetailedAnalysis)}
-                    className="absolute -bottom-16 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 backdrop-blur-xl border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 group z-50"
+                    onClick={() => {
+                        setShowDetailedAnalysis(!showDetailedAnalysis);
+                        if (!showDetailedAnalysis) {
+                            setTimeout(() => {
+                                window.scrollTo({ top: window.innerHeight * 0.5, behavior: 'smooth' });
+                            }, 100);
+                        }
+                    }}
+                    className={`absolute -bottom-16 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 backdrop-blur-xl border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 group z-50 ${showDetailedAnalysis ? 'opacity-0 pointer-events-none' : ''}`}
                 >
                     <BarChart className="w-4 h-4" />
                     <span className="font-bold text-sm">See Detailed AI Analysis</span>
@@ -168,7 +261,8 @@ const IdeaDetails = () => {
                         >
                             <Button variant="outline" className="rounded-full h-12 px-6 border-border/50 shadow-lg bg-background/80 backdrop-blur-xl hover:bg-background/90 transition-all group">
                                 <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                                Back to Marketplace
+                                <span className="hidden sm:inline">Back to Marketplace</span>
+                                <span className="sm:hidden">Back</span>
                             </Button>
                         </Link>
 
@@ -198,15 +292,57 @@ const IdeaDetails = () => {
                         >
                             <div className="absolute -left-24 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 via-primary/10 to-transparent hidden xl:block" />
 
-                            <div className="flex flex-wrap gap-3">
-                                <Badge variant="secondary" className="bg-gradient-to-r from-secondary/60 to-secondary/40 backdrop-blur-sm px-5 py-2 text-sm font-bold border border-white/10 shadow-lg">
-                                    {idea.category}
-                                </Badge>
-                                {idea.type_of_topic && (
-                                    <Badge variant="outline" className="border-primary/40 text-primary px-5 py-2 text-sm font-bold bg-primary/5 backdrop-blur-sm shadow-lg">
-                                        {idea.type_of_topic}
+                            <div className="flex flex-col gap-6">
+                                <div className="flex flex-wrap gap-3">
+                                    <Badge variant="secondary" className="bg-gradient-to-r from-secondary/60 to-secondary/40 backdrop-blur-sm px-5 py-2 text-sm font-bold border border-white/10 shadow-lg">
+                                        {idea.category}
                                     </Badge>
-                                )}
+                                    {idea.type_of_topic && (
+                                        <Badge variant="outline" className="border-primary/40 text-primary px-5 py-2 text-sm font-bold bg-primary/5 backdrop-blur-sm shadow-lg">
+                                            {idea.type_of_topic}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {/* Social Actions */}
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={`rounded-full border-zinc-700 bg-background/50 hover:bg-zinc-800 transition-colors ${localLiked ? 'text-pink-500 border-pink-500/30' : 'text-zinc-400 hover:text-white'}`}
+                                        onClick={handleLike}
+                                    >
+                                        <Heart className={`w-4 h-4 mr-2 ${localLiked ? 'fill-current' : ''}`} />
+                                        {likesCount}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={`rounded-full border-zinc-700 bg-background/50 hover:bg-zinc-800 transition-colors ${localSaved ? 'text-yellow-500 border-yellow-500/30' : 'text-zinc-400 hover:text-white'}`}
+                                        onClick={handleSave}
+                                    >
+                                        <Bookmark className={`w-4 h-4 mr-2 ${localSaved ? 'fill-current' : ''}`} />
+                                        {localSaved ? 'Saved' : 'Save'}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-full border-zinc-700 bg-background/50 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                                        onClick={handleShare}
+                                    >
+                                        {justShared ? (
+                                            <>
+                                                <Check className="w-4 h-4 mr-2 text-green-500" />
+                                                Copied
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Share2 className="w-4 h-4 mr-2" />
+                                                Share
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
 
                             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black font-outfit leading-[0.92] tracking-tighter text-foreground">
@@ -274,18 +410,18 @@ const IdeaDetails = () => {
                             transition={{ duration: 0.5 }}
                             className="mb-32 relative"
                         >
-                            <div className="max-w-5xl mx-auto bg-gradient-to-br from-background/95 to-background/80 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-2xl p-8 md:p-12 relative overflow-hidden">
+                            <div className="max-w-5xl mx-auto bg-zinc-950/80 backdrop-blur-xl rounded-3xl border border-primary/20 shadow-2xl p-8 md:p-12 relative overflow-hidden">
                                 {/* Header */}
-                                <div className="flex items-center justify-between mb-10 pb-6 border-b border-border/30">
+                                <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
                                     <div>
-                                        <h3 className="text-3xl font-black font-outfit mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                                        <h3 className="text-3xl font-black font-outfit mb-2 text-white">
                                             Detailed AI Analysis
                                         </h3>
-                                        <p className="text-muted-foreground">Comprehensive evaluation across 20 critical business metrics</p>
+                                        <p className="text-zinc-400">Comprehensive evaluation across 20 critical business metrics</p>
                                     </div>
                                     <button
                                         onClick={() => setShowDetailedAnalysis(false)}
-                                        className="p-2 rounded-full hover:bg-secondary/20 transition-colors"
+                                        className="p-2 rounded-full hover:bg-white/5 transition-colors text-zinc-400 hover:text-white"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -294,8 +430,15 @@ const IdeaDetails = () => {
                                 {/* Metrics Grid */}
                                 <div className="space-y-4">
                                     {detailedMetrics.map((metric, idx) => {
-                                        const color = getScoreColorHex(metric.score);
-                                        const colorClass = metric.score >= 80 ? 'bg-emerald-500' : metric.score >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+                                        // Standardize to monochromatic green scale for consistency
+                                        const isHigh = metric.score >= 80;
+                                        const isMed = metric.score >= 50;
+
+                                        const color = isHigh ? "#10b981" : isMed ? "#10b981" : "#ef4444"; // Keep red for critical fails only, green for everything else to be cleaner
+                                        const colorClass = isHigh ? 'bg-emerald-500' : isMed ? 'bg-emerald-500' : 'bg-red-500';
+
+                                        // Visual nuance: opacity/brightness varies by score instead of hue
+                                        const opacity = 0.5 + (metric.score / 200);
 
                                         return (
                                             <motion.div
@@ -303,7 +446,7 @@ const IdeaDetails = () => {
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: idx * 0.03 }}
-                                                className="flex items-center gap-6 p-5 rounded-2xl bg-gradient-to-r from-secondary/5 to-transparent border border-white/5 hover:border-white/10 hover:from-secondary/10 transition-all group"
+                                                className="flex items-center gap-6 p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group"
                                             >
                                                 {/* Score Circle */}
                                                 <div className="flex-shrink-0 relative w-16 h-16">
@@ -314,8 +457,8 @@ const IdeaDetails = () => {
                                                             r="45"
                                                             fill="none"
                                                             stroke="currentColor"
-                                                            strokeWidth="8"
-                                                            className="text-muted/10"
+                                                            strokeWidth="6"
+                                                            className="text-zinc-800"
                                                         />
                                                         <circle
                                                             cx="50"
@@ -323,41 +466,37 @@ const IdeaDetails = () => {
                                                             r="45"
                                                             fill="none"
                                                             stroke={color}
-                                                            strokeWidth="8"
+                                                            strokeWidth="6"
                                                             strokeLinecap="round"
                                                             strokeDasharray={`${2 * Math.PI * 45}`}
                                                             strokeDashoffset={`${2 * Math.PI * 45 * (1 - metric.score / 100)}`}
                                                             className="transition-all duration-1000"
-                                                            style={{ filter: `drop-shadow(0 0 6px ${color}80)` }}
                                                         />
                                                     </svg>
                                                     <div className="absolute inset-0 flex items-center justify-center">
-                                                        <span className="text-lg font-black" style={{ color }}>{metric.score}</span>
+                                                        <span className="text-lg font-black text-white">{metric.score}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Metric Info */}
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-bold text-base mb-1 group-hover:text-primary transition-colors">{metric.name}</h4>
-                                                    <p className="text-sm text-muted-foreground leading-relaxed">{metric.description}</p>
+                                                    <h4 className="font-bold text-base mb-1 text-white group-hover:text-primary transition-colors">{metric.name}</h4>
+                                                    <p className="text-sm text-zinc-500 leading-relaxed">{metric.description}</p>
                                                 </div>
 
                                                 {/* Score Badge */}
-                                                <div className={`flex-shrink-0 px-4 py-2 rounded-full ${colorClass} bg-opacity-10 border border-current/20`}>
+                                                <div className={`flex-shrink-0 px-4 py-2 rounded-full bg-black/40 border border-white/10`}>
                                                     <span className="text-sm font-bold" style={{ color }}>{metric.score}/100</span>
                                                 </div>
                                             </motion.div>
                                         );
                                     })}
                                 </div>
-
-                                {/* Background Decoration */}
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl pointer-events-none" />
                             </div>
                         </motion.div>
                     )}
 
-                    {/* Enhanced Market Intelligence Grid */}
+                    {/* Enhanced Market Intelligence Grid - Consistently Green */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -366,10 +505,10 @@ const IdeaDetails = () => {
                         className="relative mb-40"
                     >
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-white">
                                 Market Intelligence
                             </h2>
-                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
                                 Data-driven insights into market opportunity and scalability
                             </p>
                         </div>
@@ -380,24 +519,18 @@ const IdeaDetails = () => {
                                     label: "Market Size",
                                     value: idea.market_potential || "$10B+",
                                     icon: TrendingUp,
-                                    color: "from-blue-500 to-cyan-500",
-                                    bgColor: "bg-blue-500/10",
                                     desc: "Total Addressable Market"
                                 },
                                 {
                                     label: "Target Audience",
                                     value: idea.target_audience || "Niche",
                                     icon: Users,
-                                    color: "from-purple-500 to-pink-500",
-                                    bgColor: "bg-purple-500/10",
                                     desc: "Primary user segment"
                                 },
                                 {
                                     label: "Region",
                                     value: idea.region_feasibility || "Global",
                                     icon: Globe,
-                                    color: "from-orange-500 to-amber-500",
-                                    bgColor: "bg-orange-500/10",
                                     desc: "Geographic reach"
                                 }
                             ].map((stat, idx) => (
@@ -410,26 +543,24 @@ const IdeaDetails = () => {
                                     whileHover={{ y: -5 }}
                                     className="relative group"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <div className="relative bg-background/80 backdrop-blur-xl px-8 py-10 rounded-3xl border border-border/40 shadow-xl hover:shadow-2xl hover:border-primary/30 transition-all overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br opacity-5 blur-2xl" style={{ background: `linear-gradient(135deg, ${stat.color})` }} />
+                                    <div className="relative bg-zinc-950 px-8 py-10 rounded-3xl border border-zinc-800 hover:border-primary/50 transition-all overflow-hidden group-hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.1)]">
 
-                                        <div className={`p-4 rounded-2xl ${stat.bgColor} w-fit mb-6 group-hover:scale-110 transition-transform`}>
-                                            <stat.icon className={`w-7 h-7 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`} style={{ color: 'currentColor' }} />
+                                        <div className={`p-4 rounded-2xl bg-emerald-500/10 w-fit mb-6 group-hover:scale-110 transition-transform`}>
+                                            <stat.icon className={`w-7 h-7 text-primary`} />
                                         </div>
 
-                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">{stat.label}</div>
-                                        <div className={`text-4xl lg:text-5xl font-black mb-3 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
+                                        <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">{stat.label}</div>
+                                        <div className={`text-4xl lg:text-5xl font-black mb-3 text-white`}>
                                             {stat.value}
                                         </div>
-                                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">{stat.desc}</p>
+                                        <p className="text-sm text-zinc-500 font-medium leading-relaxed">{stat.desc}</p>
                                     </div>
                                 </motion.div>
                             ))}
                         </div>
                     </motion.div>
 
-                    {/* Enhanced Assets Section */}
+                    {/* Enhanced Assets Section - Consistently Green */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -437,20 +568,20 @@ const IdeaDetails = () => {
                         className="max-w-6xl mx-auto mb-40"
                     >
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                            <h2 className="text-4xl md:text-5xl font-black font-outfit mb-4 text-white">
                                 Digital Assets Included
                             </h2>
-                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
                                 Everything you need to launch and scale from day one
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
-                                { label: "Code Repository", sub: "Full GitHub Access", included: !!idea.github_repo_url, icon: Code2, gradient: "from-green-500 to-emerald-500" },
-                                { label: "MVP Prototype", sub: idea.hasMVP ? "Live & Deployed" : "Not Available", included: idea.hasMVP, icon: Rocket, gradient: "from-blue-500 to-cyan-500" },
-                                { label: "Design System", sub: "Figma + Assets", included: true, icon: Layers, gradient: "from-purple-500 to-pink-500" },
-                                { label: "IP Ownership", sub: "Full Legal Transfer", included: true, icon: CheckCircle2, gradient: "from-orange-500 to-amber-500" },
+                                { label: "Code Repository", sub: "Full GitHub Access", included: !!idea.github_repo_url, icon: Code2 },
+                                { label: "MVP Prototype", sub: idea.hasMVP ? "Live & Deployed" : "Not Available", included: idea.hasMVP, icon: Rocket },
+                                { label: "Design System", sub: "Figma + Assets", included: true, icon: Layers },
+                                { label: "IP Ownership", sub: "Full Legal Transfer", included: true, icon: CheckCircle2 },
                             ].map((item, idx) => (
                                 <motion.div
                                     key={idx}
@@ -459,31 +590,28 @@ const IdeaDetails = () => {
                                     viewport={{ once: true }}
                                     transition={{ delay: idx * 0.1 }}
                                     whileHover={{ y: -8, scale: 1.02 }}
-                                    className={`relative p-8 rounded-[2rem] border-2 transition-all duration-500 group overflow-hidden ${item.included
-                                        ? 'bg-gradient-to-br from-background/90 to-background/60 border-white/10 hover:border-primary/40 shadow-xl hover:shadow-2xl'
-                                        : 'bg-secondary/5 border-border/20 opacity-60 grayscale'
+                                    className={`relative p-8 rounded-[2rem] border transition-all duration-500 group overflow-hidden ${item.included
+                                        ? 'bg-zinc-900/50 border-zinc-800 hover:border-primary/50'
+                                        : 'bg-zinc-900/20 border-zinc-800/50 opacity-60'
                                         }`}
                                 >
                                     {item.included && (
-                                        <>
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                            <div className={`absolute top-0 right-0 w-24 h-24 rounded-full bg-gradient-to-br ${item.gradient} opacity-5 blur-2xl group-hover:opacity-10 transition-opacity`} />
-                                        </>
+                                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                     )}
 
                                     <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 ${item.included
-                                        ? `bg-gradient-to-br ${item.gradient} shadow-lg group-hover:shadow-xl group-hover:scale-110`
-                                        : 'bg-muted/20'
+                                        ? `bg-primary/10 text-primary group-hover:scale-110`
+                                        : 'bg-zinc-800 text-zinc-600'
                                         }`}>
-                                        <item.icon className={`w-8 h-8 ${item.included ? 'text-white' : 'text-muted'}`} />
+                                        <item.icon className={`w-8 h-8`} />
                                     </div>
 
-                                    <h4 className="font-black text-xl mb-2">{item.label}</h4>
-                                    <p className="text-sm text-muted-foreground font-medium mb-8">{item.sub}</p>
+                                    <h4 className="font-black text-xl mb-2 text-white">{item.label}</h4>
+                                    <p className="text-sm text-zinc-500 font-medium mb-8">{item.sub}</p>
 
                                     <div className={`flex items-center gap-2.5 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full w-fit ${item.included ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
                                         }`}>
-                                        <div className={`w-2 h-2 rounded-full ${item.included ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                                        <div className={`w-2 h-2 rounded-full ${item.included ? 'bg-emerald-500' : 'bg-red-500'}`} />
                                         <span>{item.included ? 'Included' : 'Unavailable'}</span>
                                     </div>
                                 </motion.div>

@@ -15,29 +15,29 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary: Teal #0FA3B1 -> HSL(176, 83%, 38%) */
-    --primary: 176 83% 38%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Vibrant Green -> Darker */
+    --primary: 142 71% 25%;
+    --primary-foreground: 145 80% 10%;
 
     /* Secondary: Soft Slate */
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
 
-    /* Accent: Warm Orange #FF7A3D -> HSL(19, 100%, 62%) */
+    /* Accent: Warm Orange to complement Green */
     --accent: 19 100% 62%;
     --accent-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 176 83% 38%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 142 70% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Custom Gradients - Brand Aligned */
     --gradient-brand: linear-gradient(135deg, hsl(176 83% 38%) 0%, hsl(190 70% 45%) 100%);
@@ -56,47 +56,47 @@
   }
 
   .dark {
-    /* ida Brand Colors - Dark Mode */
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
+    /* ida Brand Colors - Dark Mode Reference */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 7%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Primary: Adjusted Teal for Dark Mode */
-    --primary: 176 83% 45%;
-    --primary-foreground: 222 47% 5%;
+    /* Primary: Vibrant Green #22c55e */
+    --primary: 142 71% 45%;
+    --primary-foreground: 145 80% 10%;
 
-    /* Secondary: Dark Slate */
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary: Dark Grey */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    /* Accent: Adjusted Orange */
+    /* Accent: Orange remains as contrast */
     --accent: 19 100% 65%;
     --accent-foreground: 222 47% 5%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 176 83% 45%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 142 70% 50%;
 
     /* Custom Gradients - Dark */
-    --gradient-brand: linear-gradient(135deg, hsl(176 83% 45%) 0%, hsl(190 70% 50%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(142 70% 50%) 0%, hsl(160 70% 40%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(19 100% 65%) 0%, hsl(340 82% 62%) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(176 83% 45% / 0.2) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, hsl(19 100% 65% / 0.15) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsl(190 70% 50% / 0.1) 0px, transparent 50%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(142 70% 50% / 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(19 100% 65% / 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(160 70% 40% / 0.05) 0px, transparent 50%);
 
-    --shadow-glow-primary: 0 0 60px hsl(176 83% 45% / 0.3);
-    --shadow-glow-accent: 0 0 60px hsl(19 100% 65% / 0.3);
+    --shadow-glow-primary: 0 0 60px hsl(142 70% 50% / 0.15);
+    --shadow-glow-accent: 0 0 60px hsl(19 100% 65% / 0.15);
   }
 }
 

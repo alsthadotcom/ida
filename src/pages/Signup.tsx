@@ -86,7 +86,7 @@ const Signup = () => {
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-accent/20 to-primary/20 border border-white/10 backdrop-blur-sm">
                 <Sparkles className="w-4 h-4 text-accent" />
-                <span className="text-sm font-bold">Join Idea Canvas Today</span>
+                <span className="text-sm font-bold">Join IDA Today</span>
               </div>
 
               <h1 className="text-5xl md:text-6xl font-black font-outfit leading-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">

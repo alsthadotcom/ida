@@ -104,6 +104,17 @@ export async function createIdea(ideaData: any): Promise<string> {
             github_repo_url: ideaData.githubRepoUrl || "",
             mvp_file_urls: ideaData.mvpFileUrls || "",
 
+            // New Fields (Migration from SellIdea)
+            document_url: ideaData.documentUrl || null,
+            additional_doc_1: ideaData.additionalDoc1 || null,
+            additional_doc_2: ideaData.additionalDoc2 || null,
+            additional_doc_3: ideaData.additionalDoc3 || null,
+
+            mvp_type: ideaData.mvpType,
+            digital_mvp: ideaData.digitalMvp || null,
+            physical_mvp_image: ideaData.physicalMvpImage || null,
+            physical_mvp_video: ideaData.physicalMvpVideo || null,
+
             // AI Scores
             ai_scores: ideaData.aiScores ? JSON.stringify(ideaData.aiScores) : null,
 
@@ -242,6 +253,7 @@ export async function fetchPlatformStats(): Promise<{
     creatorsCount: number;
     totalValue: number;
     avgSatisfaction: number;
+    soldCount: number;
 }> {
     try {
         const { data, error } = await supabase
@@ -264,11 +276,17 @@ export async function fetchPlatformStats(): Promise<{
         const avgRating = data.reduce((sum, idea) => sum + (idea.rating || 0), 0) / (ideasCount || 1);
         const avgSatisfaction = Math.round((avgRating / 5) * 100);
 
+        const { count: soldCount, error: soldError } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'approved');
+
         return {
             ideasCount,
             creatorsCount: uniqueCreators,
             totalValue,
-            avgSatisfaction: avgSatisfaction || 0
+            avgSatisfaction: avgSatisfaction || 0,
+            soldCount: soldCount || 0
         };
     } catch (error) {
         console.error('Error in fetchPlatformStats:', error);
@@ -276,7 +294,8 @@ export async function fetchPlatformStats(): Promise<{
             ideasCount: 0,
             creatorsCount: 0,
             totalValue: 0,
-            avgSatisfaction: 0
+            avgSatisfaction: 0,
+            soldCount: 0
         };
     }
 }
@@ -307,6 +326,16 @@ export async function updateIdea(id: string, ideaData: any): Promise<void> {
             type_of_topic: ideaData.typeOfTopic,
             // Evidence
             evidence_note: ideaData.evidenceNote,
+
+            // New Fields
+            document_url: ideaData.documentUrl,
+            additional_doc_1: ideaData.additionalDoc1,
+            additional_doc_2: ideaData.additionalDoc2,
+            additional_doc_3: ideaData.additionalDoc3,
+            mvp_type: ideaData.mvpType,
+            digital_mvp: ideaData.digitalMvp,
+            physical_mvp_image: ideaData.physicalMvpImage,
+            physical_mvp_video: ideaData.physicalMvpVideo,
 
             // AI Scores
             ai_scores: ideaData.aiScores ? JSON.stringify(ideaData.aiScores) : undefined,
@@ -536,5 +565,38 @@ export async function updateTransactionStatus(transactionId: string, status: 'ap
     } catch (error) {
         console.error("Error updating transaction status:", error);
         throw error;
+    }
+}
+
+// Toggle Like (Increment/Decrement)
+export async function incrementIdeaLikes(id: string, currentLikes: number): Promise<number> {
+    try {
+        const newLikes = currentLikes + 1;
+        const { error } = await supabase
+            .from('ideas')
+            .update({ likes: newLikes })
+            .eq('id', id);
+
+        if (error) throw error;
+        return newLikes;
+    } catch (error) {
+        console.error("Error incrementing likes:", error);
+        return currentLikes;
+    }
+}
+
+export async function decrementIdeaLikes(id: string, currentLikes: number): Promise<number> {
+    try {
+        const newLikes = Math.max(0, currentLikes - 1);
+        const { error } = await supabase
+            .from('ideas')
+            .update({ likes: newLikes })
+            .eq('id', id);
+
+        if (error) throw error;
+        return newLikes;
+    } catch (error) {
+        console.error("Error decrementing likes:", error);
+        return currentLikes;
     }
 }
